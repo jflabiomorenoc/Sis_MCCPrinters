@@ -15,7 +15,7 @@
                     <div class="card pc-user-card">
                         <div class="card-body">
                             <div class="d-flex align-items-center">
-                                <div class="flex-shrink-0"><img src="../../../assets/images/user/avatar-1.jpg" alt="user-image" class="user-avtar wid-45 rounded-circle"></div>
+                                <div class="flex-shrink-0"><img src="../../../assets/images/user/<?php echo $_SESSION['foto_perfil'];?>" alt="user-image" class="user-avtar wid-45 rounded-circle"></div>
                                 <div class="flex-grow-1 ms-3 me-2">
                                     <h6 class="mb-0"><?php echo $_SESSION["usuario"]; ?></h6>
                                     <small><?php echo $_SESSION["desc_rol"]; ?></small>
@@ -29,9 +29,9 @@
                             <div class="collapse pc-user-links" id="pc_sidebar_userlink">
                                 <div class="pt-3">
                                     <a href="#!"><i class="ti ti-user"></i> <span>Mi cuenta</span> </a>
-                                    <a href="#!"><i class="ti ti-settings"></i> <span>Configuración</span> </a>
+                                    <!-- <a href="#!"><i class="ti ti-settings"></i> <span>Configuración</span> </a> -->
                                     <a href="#!"><i class="ti ti-lock"></i> <span>Bloquear</span> </a>
-                                    <a href="#!"><i class="ti ti-power"></i> <span>Salir</span></a>
+                                    <a href="../Logout/logout.php"><i class="ti ti-power"></i> <span>Salir</span></a>
                                 </div>
                             </div>
                         </div>

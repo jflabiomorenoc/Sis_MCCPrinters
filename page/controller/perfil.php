@@ -10,11 +10,11 @@ switch($_GET["op"]){
         
         foreach($datos as $row){
             $sub_array = array();
-            $sub_array[] = ''; // Columna 0: vacía para control responsive
             $sub_array[] = $row["nombre"]; // Columna 1: Nombre
-            
+                        
             // Columna 2: Generar usuarios dinámicamente
-            $usuarios_html = '<div class="">
+            $usuarios_html = '<a onclick="modalAsignar(' . $row["id"] . ')" style="cursor: pointer;">
+                                <div>
                                 <div class="user-group able-user-group">';
             
             $total_usuarios = intval($row["total_usuarios"]);
@@ -31,8 +31,8 @@ switch($_GET["op"]){
                     
                     // Ruta de la foto (ajusta según tu estructura)
                     $foto_path = ($foto && $foto != 'default.jpg') 
-                        ? "../../../uploads/usuarios/" . $foto 
-                        : "../../../assets/images/user/default-avatar.jpg";
+                        ? "../../../assets/images/user/" . $foto 
+                        : "../../../assets/images/user/default.jpg";
                     
                     $usuarios_html .= '<img src="' . $foto_path . '" alt="user-image" class="avtar" 
                                         data-bs-toggle="tooltip" title="' . $nombre . ' ' . $apellido . '">';
@@ -45,35 +45,29 @@ switch($_GET["op"]){
                 }
             } else {
                 // No hay usuarios asignados
-                $usuarios_html .= '<span class="badge bg-light-warning f-12">Sin usarios</span>';
+                $usuarios_html .= '<a onclick="modalAsignar(' . $row["id"] . ')" style="cursor: pointer;"><span class="badge bg-light-warning f-12">Sin usarios</span></a>';
             }
             
-            $usuarios_html .= '</div></div>';
+            $usuarios_html .= '</div></div></a>';
             $sub_array[] = $usuarios_html;
             
             // Columna 3: Estado
             if ($row["estado"] == 1) {
-                $sub_array[] = '<span class="badge bg-light-success f-12">Activo</span>';
+                $sub_array[] = '<div class="text-success"><i class="fas fa-circle f-10 m-r-10"></i>Activo</div>';
             } else {
-                $sub_array[] = '<span class="badge bg-light-danger f-12">Inactivo</span>';
+                $sub_array[] = '<div class="text-secondary"><i class="fas fa-circle f-10 m-r-10"></i>Inactivo</div>';
             }
             
             // Columna 4: Acciones
             $sub_array[] = '<ul class="list-inline me-auto mb-0">
-                                <li class="list-inline-item align-bottom" data-bs-toggle="tooltip" title="Ver">
-                                    <a href="#" class="avtar avtar-xs btn-link-secondary btn-pc-default" 
-                                    onclick="verPerfil(' . $row["id"] . ')">
-                                        <i class="ti ti-eye f-18"></i>
-                                    </a>
-                                </li>
                                 <li class="list-inline-item align-bottom" data-bs-toggle="tooltip" title="Editar">
-                                    <a href="#" class="avtar avtar-xs btn-link-success btn-pc-default" 
+                                    <a style="cursor: pointer;" class="avtar avtar-xs btn-link-success btn-pc-default" 
                                     onclick="editarPerfil(' . $row["id"] . ')">
                                         <i class="ti ti-edit-circle f-18"></i>
                                     </a>
                                 </li>
                                 <li class="list-inline-item align-bottom" data-bs-toggle="tooltip" title="Eliminar">
-                                    <a href="#" class="avtar avtar-xs btn-link-danger btn-pc-default" 
+                                    <a style="cursor: pointer;" class="avtar avtar-xs btn-link-danger btn-pc-default" 
                                     onclick="eliminarPerfil(' . $row["id"] . ')">
                                         <i class="ti ti-trash f-18"></i>
                                     </a>
@@ -128,12 +122,12 @@ switch($_GET["op"]){
             
             if ($resultado_perfil) {
                 // Guardar permisos
-                $resultado_permisos = $modulo->guardar_permisos_perfil($perfil_id, $permisos);
+                $resultado_permisos = $perfil->guardar_permisos_perfil($perfil_id, $permisos);
                 
                 if ($resultado_permisos) {
                     echo json_encode([
                         'success' => true,
-                        'message' => "Perfil {$mensaje_accion} correctamente con sus permisos",
+                        'message' => "Perfil {$mensaje_accion} correctamente",
                         'perfil_id' => $perfil_id
                     ]);
                 } else {
@@ -173,7 +167,7 @@ switch($_GET["op"]){
             }
             
             // Obtener permisos del perfil
-            $permisos_perfil = $modulo->obtener_permisos_perfil($perfil_id);
+            $permisos_perfil = $perfil->obtener_permisos_perfil($perfil_id);
             
             echo json_encode([
                 'success' => true,
@@ -221,6 +215,143 @@ switch($_GET["op"]){
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
             ]);
+        }
+        break;
+
+    case "obtener_usuarios_disponibles":
+        try {
+            $perfil_id = $_POST['perfil_id'];
+            
+            if (empty($perfil_id)) {
+                throw new Exception('ID del perfil es requerido');
+            }
+            
+            $usuarios = $perfil->obtener_usuarios_disponibles($perfil_id);
+            
+            // Formatear para Select2
+            $data_select2 = array_map(function($usuario) {
+                return [
+                    'id' => $usuario['id'],
+                    'text' => $usuario['nombre_completo']
+                ];
+            }, $usuarios);
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $data_select2
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+        break;
+
+    case "asignar_usuarios":
+        try {
+            $perfil_id = $_POST['perfil_id'];
+            $usuarios_ids = $_POST['usuarios_ids'];
+            
+            if (empty($perfil_id)) {
+                throw new Exception('ID del perfil es requerido');
+            }
+            
+            if (empty($usuarios_ids) || !is_array($usuarios_ids)) {
+                throw new Exception('Debe seleccionar al menos un usuario');
+            }
+            
+            $resultado = $perfil->asignar_usuarios_perfil($perfil_id, $usuarios_ids);
+            
+            if ($resultado['success']) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => $resultado['message']
+                ]);
+            } else {
+                throw new Exception($resultado['message']);
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+        break;
+
+    case "obtener_usuarios":
+        $datos = $perfil->obtener_usuarios($_POST['perfil_id']);
+        $data = Array();
+        
+        foreach($datos as $row){
+            $sub_array = array();
+
+            $sub_array[] = '<div class="d-flex align-items-center">
+                                  <div class="flex-shrink-0"><img
+                                              src="../../../assets/images/user/'. $row["foto_perfil"] . '"
+                                              alt="user image"
+                                              class="img-radius wid-40">
+                                  </div>
+                                  <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">'. $row["nombres"] . ' ' . $row["apellidos"] .'</h6>
+                                  </div>
+                            </div>';
+            
+            // Columna 4: Acciones
+            $sub_array[] = '<ul class="list-inline me-auto mb-0">
+                                <li class="list-inline-item align-bottom" data-bs-toggle="tooltip" title="Eliminar">
+                                    <a style="cursor: pointer;" class="avtar avtar-xs btn-link-danger btn-pc-default" 
+                                    onclick="eliminarUsuario(' . $row["up_id"] . ')">
+                                        <i class="ti ti-trash f-18"></i>
+                                    </a>
+                                </li>
+                            </ul>';
+            
+            $data[] = $sub_array;
+        }
+        
+        $results = array(
+            "draw" => isset($_POST['draw']) ? intval($_POST['draw']) : 1,
+            "recordsTotal" => count($data),
+            "recordsFiltered" => count($data),
+            "data" => $data
+        );
+        echo json_encode($results);
+        break;
+    
+    case "eliminar_usuario_perfil":
+        try {
+            $usuario_perfil_id = $_POST['usuario_perfil_id'];
+
+            $resultado = $perfil->eliminar_usuario_perfil($usuario_perfil_id);
+            
+            if ($resultado) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Asignación eliminada correctamente.'
+                ]);
+            } else {
+                throw new Exception('Error al eliminar la asignación');
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+        break;
+
+    case "listar_perfil_combo":
+        $datos = $perfil->listar_perfil_combo();
+        if(is_array($datos)==true and count($datos)>0){
+            $html= "<option value=''>-- Seleccionar --</option>";
+            foreach($datos as $row){
+                $html.= "<option value='".$row['id']."'>".$row['nombre']."</option>";
+            }
+            echo $html;
         }
         break;
 }

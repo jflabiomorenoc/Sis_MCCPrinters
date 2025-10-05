@@ -7,7 +7,7 @@
             include "../MainNav/nav.php";
             include "../MainHeader/header.php";
             
-        }
+        
     ?>
 
         <div class="pc-container">
@@ -142,5 +142,11 @@
     ?>
 
     <script src="index.js"></script>
+
+    <?php  
+        } else{
+            header("Location:".Conectar::ruta());
+        }
+    ?>
 
         

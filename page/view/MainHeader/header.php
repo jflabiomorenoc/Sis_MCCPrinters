@@ -26,15 +26,15 @@
                                 </svg>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end pc-h-dropdown">
-                                <a href="#!" class="dropdown-item"><i class="ti ti-user"></i> <span>My Account</span> </a>
-                                <a href="#!" class="dropdown-item"><i class="ti ti-settings"></i> <span>Settings</span> </a>
-                                <a href="#!" class="dropdown-item"><i class="ti ti-headset"></i> <span>Support</span> </a>
-                                <a href="#!" class="dropdown-item"><i class="ti ti-lock"></i> <span>Lock Screen</span> </a>
-                                <a href="#!" class="dropdown-item"><i class="ti ti-power"></i> <span>Logout</span></a>
+                                <a href="#" class="dropdown-item"><i class="ti ti-user"></i> <span>My Account</span> </a>
+                                <a href="#" class="dropdown-item"><i class="ti ti-settings"></i> <span>Settings</span> </a>
+                                <a href="#" class="dropdown-item"><i class="ti ti-headset"></i> <span>Support</span> </a>
+                                <a href="#" class="dropdown-item"><i class="ti ti-lock"></i> <span>Lock Screen</span> </a>
+                                <a href="#" class="dropdown-item"><i class="ti ti-power"></i> <span>Logout</span></a>
                             </div>
                         </li>
 
-                        <li class="dropdown pc-h-item header-user-profile"><a class="pc-head-link dropdown-toggle arrow-none me-0" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false" data-bs-auto-close="outside" aria-expanded="false"><img src="../../../assets/images/user/avatar-2.jpg" alt="user-image" class="user-avtar"></a>
+                        <li class="dropdown pc-h-item header-user-profile"><a class="pc-head-link dropdown-toggle arrow-none me-0" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false" data-bs-auto-close="outside" aria-expanded="false"><img src="../../../assets/images/user/<?php echo $_SESSION['foto_perfil'];?>" alt="user-image" class="user-avtar"></a>
                             <div class="dropdown-menu dropdown-user-profile dropdown-menu-end pc-h-dropdown">
                                 <div class="dropdown-header d-flex align-items-center justify-content-between">
                                     <h5 class="m-0">Perfil</h5>
@@ -42,7 +42,7 @@
                                 <div class="dropdown-body">
                                     <div class="profile-notification-scroll position-relative" style="max-height: calc(100vh - 225px)">
                                         <div class="d-flex mb-1">
-                                            <div class="flex-shrink-0"><img src="../../../assets/images/user/avatar-2.jpg" alt="user-image" class="user-avtar wid-35"></div>
+                                            <div class="flex-shrink-0"><img src="../../../assets/images/user/<?php echo $_SESSION['foto_perfil'];?>" alt="user-image" class="user-avtar wid-35"></div>
                                             <div class="flex-grow-1 ms-3">
                                                 <h6 class="mb-1"><?php echo $_SESSION["nombres"] . ' ' . $_SESSION["apellidos"]; ?></h6>
                                                 <span><?php echo $_SESSION["desc_rol"]; ?></span>
@@ -60,14 +60,14 @@
                                             </div>
                                         </div> -->
                                         <p class="text-span">Administrar</p>
-                                        <a href="#" class="dropdown-item">
+                                        <!-- <a href="#" class="dropdown-item">
                                             <span>
                                                 <svg class="pc-icon text-muted me-2">
                                                     <use xlink:href="#custom-setting-outline"></use>
                                                 </svg> 
                                                 <span>Configuración</span> 
                                             </span>
-                                        </a>
+                                        </a> -->
                                         <a href="#" class="dropdown-item">
                                             <span>
                                                 <svg class="pc-icon text-muted me-2">
@@ -77,9 +77,9 @@
                                             </span>
                                         </a>
                                         <hr class="border-secondary border-opacity-50">
-                                        <div class="d-grid mb-3"><button class="btn btn-primary"><svg class="pc-icon me-2">
+                                        <div class="d-grid mb-3"><a class="btn btn-primary" href="../Logout/logout.php"><svg class="pc-icon me-2">
                                                     <use xlink:href="#custom-logout-1-outline"></use>
-                                                </svg>Salir</button>
+                                                </svg>Salir</a>
                                         </div>
                                     </div>
                                 </div>

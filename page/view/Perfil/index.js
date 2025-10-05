@@ -1,3 +1,5 @@
+let tabla_usuario;
+
 $(document).ready(function(){
     listarPerfil()
     cargarModulosPermisos();
@@ -11,20 +13,12 @@ function listarPerfil(){
         lengthChange: false,
         colReorder: true,
         "ordering": false,
-        
-        // CONFIGURACIÓN RESPONSIVE MEJORADA
-        "responsive": {
-            "details": {
-                "type": 'column',
-                "target": 0
-            }
-        },
+        "iDisplayLength": 10,
         columnDefs: [
-            { width: "10px", targets: 0, className: 'dtr-control', orderable: false, data: null, defaultContent: ''},
-            { width: "35%" , targets: 1, className: 'text-left font-weight-bold', responsivePriority: 1},
-            { width: "30%" , targets: 2, className: 'text-center', responsivePriority: 3},
-            { width: "20%" , targets: 3, className: 'text-center', responsivePriority: 2},
-            { width: "15%" , targets: 4, className: 'text-center', responsivePriority: 2}
+            { width: "35%" , targets: 0, className: 'text-left font-weight-bold', responsivePriority: 1},
+            { width: "30%" , targets: 1, className: 'text-center', responsivePriority: 3},
+            { width: "20%" , targets: 2, className: 'text-center', responsivePriority: 2},
+            { width: "15%" , targets: 3, className: 'text-center', responsivePriority: 2}
         ],
         
         "ajax":{
@@ -59,6 +53,257 @@ function listarPerfil(){
         "dom": '<"row mb-3"<"col-sm-12 col-md-6"B><"col-sm-12 col-md-6"<"d-flex justify-content-end"f>>>' +
                '<"row"<"col-sm-12"tr>>' +
                '<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
+    });
+}
+
+function modalAsignar(perfil_id) {
+
+    $('#perfil_id').val(perfil_id);
+
+    // Limpiar Select2 si existe
+    if ($('#usuario_id').hasClass("select2-hidden-accessible")) {
+        $('#usuario_id').select2('destroy');
+    }
+    $('#usuario_id').empty();
+
+    cargarUsuariosDisponibles(perfil_id);
+
+    cargarUsuariosPorPerfil(perfil_id);
+
+    $('#modal_asignar').modal('show');
+}
+
+let perfil_id_actual = null;
+
+// Función para mostrar skeleton loader
+function mostrarSkeletonLoader() {
+    const skeletonHTML = `
+        <tr class="skeleton-row">
+            <td><div class="skeleton-text"></div></td>
+            <td><div class="skeleton-badge"></div></td>
+        </tr>
+        <tr class="skeleton-row">
+            <td><div class="skeleton-text"></div></td>
+            <td><div class="skeleton-badge"></div></td>
+        </tr>
+        <tr class="skeleton-row">
+            <td><div class="skeleton-text"></div></td>
+            <td><div class="skeleton-badge"></div></td>
+        </tr>
+    `;
+    
+    $('#tabla-usuario tbody').html(skeletonHTML);
+}
+
+// Función para ocultar skeleton loader
+function ocultarSkeletonLoader() {
+    $('#tabla-usuario tbody .skeleton-row').remove();
+}
+
+function cargarUsuariosPorPerfil(perfil_id) {
+    perfil_id_actual = perfil_id;
+    
+    if ($.fn.DataTable.isDataTable('#tabla-usuario')) {
+        // Mostrar skeleton antes de recargar
+        mostrarSkeletonLoader();
+        
+        // Recargar los datos
+        tabla_usuario.ajax.reload(function() {
+            // El skeleton se ocultará automáticamente al dibujar la tabla
+        }, false);
+    } else {
+        // Inicializar la tabla por primera vez
+        tabla_usuario = $('#tabla-usuario').DataTable({
+            "aProcessing": true,
+            "aServerSide": true,
+            "searching": false,
+            lengthChange: false,
+            colReorder: true,
+            "ordering": false,
+            info: false,
+            "iDisplayLength": 5,
+            columnDefs: [
+                { width: "80%" , targets: 0, className: 'text-left font-weight-bold'},
+                { width: "20%" , targets: 1, className: 'text-center'},
+            ],
+            "ajax":{
+                url: '../../controller/perfil.php?op=obtener_usuarios',
+                type: "post",
+                dataType: "json",
+                data: function(d) {
+                    d.perfil_id = perfil_id_actual;
+                },
+                // Deshabilitar el processing por defecto
+                beforeSend: function() {
+                    mostrarSkeletonLoader();
+                },					
+                error: function(e){
+                    console.log(e.responseText);
+                    ocultarSkeletonLoader();
+                }
+            },
+            "processing": false, // Deshabilitar el mensaje de processing
+            "drawCallback": function(settings) {
+                // Ocultar skeleton cuando termine de dibujar
+                ocultarSkeletonLoader();
+            },
+            "language": {
+                "search": "Buscar:",
+                "lengthMenu": "Mostrar _MENU_ registros",
+                "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                "infoEmpty": "Mostrando 0 a 0 de 0 registros",
+                "infoFiltered": "(filtrado de _MAX_ registros totales)",
+                "loadingRecords": "Cargando...",
+                "zeroRecords": '<div class="text-center py-4"><i class="fas fa-inbox fa-3x text-muted mb-3"></i><h5 class="text-muted">No hay datos disponibles</h5><p class="text-muted">No se encontraron registros que mostrar</p></div>',
+                "emptyTable": '<div class="text-center py-4"><h5>No hay usuarios asignados</h5><p class="text-muted">Este perfil no tiene usuarios asignados</p></div>',
+                "paginate": {
+                    "first": '<i class="fas fa-angle-double-left"></i>',
+                    "last": '<i class="fas fa-angle-double-right"></i>',
+                    "next": '<i class="fas fa-angle-right"></i>',
+                    "previous": '<i class="fas fa-angle-left"></i>'
+                }
+            },
+            "dom": '<"row"<"col-sm-12"tr>>' +
+                   '<"row mt-3"<"col-sm-12 d-flex justify-content-center"p>>',
+        });
+    }
+}
+
+function cargarUsuariosDisponibles(perfil_id) {
+    $.ajax({
+        url: '../../controller/perfil.php?op=obtener_usuarios_disponibles',
+        type: 'POST',
+        dataType: 'json',
+        data: { perfil_id: perfil_id },
+        success: function(response) {
+            if (response.success) {
+                // Inicializar Select2
+                $('#usuario_id').select2({
+                    placeholder: 'Seleccionar usuarios...',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $('#modal_asignar'),
+                    language: {
+                        noResults: function() {
+                            return "No se encontraron usuarios disponibles";
+                        },
+                        searching: function() {
+                            return "Buscando...";
+                        }
+                    },
+                    data: response.data
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Advertencia',
+                    text: response.message || 'No hay usuarios disponibles'
+                });
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error al cargar usuarios:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al cargar los usuarios disponibles'
+            });
+        }
+    });
+}
+
+function guardarAsignacion(){
+    let perfil_id    = $('#perfil_id').val();
+    let usuarios_ids = $('#usuario_id').val();
+
+    if (!usuarios_ids || usuarios_ids.length === 0) {
+        getMessage("warning", "Debe seleccionar al menos un usuario");
+        return false;
+    }
+
+    // Enviar datos al servidor
+    $.ajax({
+        url: '../../controller/perfil.php?op=asignar_usuarios',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            perfil_id: perfil_id,
+            usuarios_ids: usuarios_ids
+        },
+        success: function(response) {
+            Swal.close();
+            
+            if (response.success) {
+                
+                tabla.ajax.reload();
+
+                getMessage("success", response.message);
+                
+                if ($('#usuario_id').hasClass("select2-hidden-accessible")) {
+                    $('#usuario_id').select2('destroy');
+                }
+            
+                $('#usuario_id').empty();
+
+                cargarUsuariosDisponibles(perfil_id);
+                
+                if (tabla_usuario) {
+                    tabla_usuario.ajax.reload();
+                }
+                
+            } else {
+                getMessage("error", response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            Swal.close();
+            getMessage("error", 'Error al asignar los usuarios. Por favor, intente nuevamente.');
+        }
+    });
+}
+
+function eliminarUsuario(usuario_perfil_id){
+    Swal.fire({
+        text: `¿Eliminar la asignación de este usuario al perfil?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '../../controller/perfil.php?op=eliminar_usuario_perfil',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    usuario_perfil_id : usuario_perfil_id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        let perfil_id = $('#perfil_id').val();
+                        // Inicializar Select2 con usuarios disponibles
+                        cargarUsuariosDisponibles(perfil_id);
+
+                        tabla.ajax.reload();
+
+                        getMessage("success", response.message || "Error desconocido");
+                        
+                        // Recargar tabla de perfiles si existe
+                        if (typeof tabla_usuario !== 'undefined') {
+                            tabla_usuario.ajax.reload();
+                        }
+                        
+                    } else {
+                        getMessage("error", response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    getMessage("error", 'Error al eliminar el perfil');
+                }
+            });
+        }
     });
 }
 
@@ -134,50 +379,61 @@ function cargarModulosPermisos(perfil_id = null) {
             
             if (data.length > 0) {
                 data.forEach(function(modulo) {
+                    const esDashboard = modulo.es_dashboard == 1;
+                    const nombreModulo = modulo.nombre.toLowerCase();
+                    
                     html += `
-                        <tr>
+                        <tr data-modulo-id="${modulo.id}" data-es-dashboard="${esDashboard}">
                             <td>
                                 <strong>${modulo.nombre}</strong>
                                 <input type="hidden" name="modulo_id[]" value="${modulo.id}">
+                                ${esDashboard ? '<small class="text-muted d-block">Solo lectura</small>' : ''}
                             </td>
                             <td>
                                 <div class="form-check mb-2">
-                                    <input class="form-check-input input-primary" 
+                                    <input class="form-check-input input-primary checkbox-ver" 
                                            type="checkbox" 
                                            id="ver_${modulo.id}"
                                            name="permisos[${modulo.id}][ver]"
                                            value="1"
-                                           ${modulo.puede_ver ? 'checked' : ''}>
+                                           ${modulo.puede_ver ? 'checked' : ''}
+                                           ${esDashboard ? 'disabled' : ''}>
                                 </div>
                             </td>
                             <td>
                                 <div class="form-check mb-2">
-                                    <input class="form-check-input input-primary" 
+                                    <input class="form-check-input input-primary checkbox-crear" 
                                            type="checkbox" 
                                            id="crear_${modulo.id}"
                                            name="permisos[${modulo.id}][crear]"
                                            value="1"
-                                           ${modulo.puede_crear ? 'checked' : ''}>
+                                           ${modulo.puede_crear ? 'checked' : ''}
+                                           ${esDashboard ? 'disabled' : ''}
+                                           data-modulo-id="${modulo.id}">
                                 </div>
                             </td>
                             <td>
                                 <div class="form-check mb-2">
-                                    <input class="form-check-input input-primary" 
+                                    <input class="form-check-input input-primary checkbox-editar" 
                                            type="checkbox" 
                                            id="editar_${modulo.id}"
                                            name="permisos[${modulo.id}][editar]"
                                            value="1"
-                                           ${modulo.puede_editar ? 'checked' : ''}>
+                                           ${modulo.puede_editar ? 'checked' : ''}
+                                           ${esDashboard ? 'disabled' : ''}
+                                           data-modulo-id="${modulo.id}">
                                 </div>
                             </td>
                             <td>
                                 <div class="form-check mb-2">
-                                    <input class="form-check-input input-primary" 
+                                    <input class="form-check-input input-primary checkbox-eliminar" 
                                            type="checkbox" 
                                            id="eliminar_${modulo.id}"
                                            name="permisos[${modulo.id}][eliminar]"
                                            value="1"
-                                           ${modulo.puede_eliminar ? 'checked' : ''}>
+                                           ${modulo.puede_eliminar ? 'checked' : ''}
+                                           ${esDashboard ? 'disabled' : ''}
+                                           data-modulo-id="${modulo.id}">
                                 </div>
                             </td>
                         </tr>
@@ -195,6 +451,9 @@ function cargarModulosPermisos(perfil_id = null) {
             }
             
             $('#tabla-permisos tbody').html(html);
+            
+            // Configurar eventos después de cargar el HTML
+            configurarEventosPermisos();
         },
         error: function(xhr, status, error) {
             console.error('Error al cargar módulos:', error);
@@ -209,9 +468,87 @@ function cargarModulosPermisos(perfil_id = null) {
         }
     });
 }
-// Función para guardar solo permisos (mantener la función original)
+
+function configurarEventosPermisos() {
+    // Evento para checkboxes de crear, editar y eliminar
+    $(document).off('change', '.checkbox-crear, .checkbox-editar, .checkbox-eliminar').on('change', '.checkbox-crear, .checkbox-editar, .checkbox-eliminar', function() {
+        const moduloId = $(this).data('modulo-id');
+        const fila = $(this).closest('tr');
+        const esDashboard = fila.data('es-dashboard');
+        
+        // No aplicar lógica si es dashboard
+        if (esDashboard) {
+            return;
+        }
+        
+        // Si se marca cualquier permiso de acción, marcar automáticamente "ver"
+        if ($(this).is(':checked')) {
+            const checkboxVer = $(`#ver_${moduloId}`);
+            checkboxVer.prop('checked', true);
+            
+            // Agregar efecto visual
+            checkboxVer.parent().addClass('highlight-auto-check');
+            setTimeout(() => {
+                checkboxVer.parent().removeClass('highlight-auto-check');
+            }, 1000);
+        }
+        
+        // Verificar si se debe desmarcar "ver" cuando se desmarcan todos los otros permisos
+        verificarDesmarcarVer(moduloId);
+    });
+    
+    // Evento para checkbox de ver
+    $(document).off('change', '.checkbox-ver').on('change', '.checkbox-ver', function() {
+        const moduloId = $(this).attr('id').replace('ver_', '');
+        const fila = $(this).closest('tr');
+        const esDashboard = fila.data('es-dashboard');
+        
+        // No permitir desmarcar "ver" en dashboard
+        if (esDashboard && !$(this).is(':checked')) {
+            $(this).prop('checked', true);
+            getMessage("warning", "El permiso de ver en Dashboard no se puede desactivar")
+            return;
+        }
+        
+        // Si se desmarca "ver", desmarcar todos los demás permisos
+        if (!$(this).is(':checked')) {
+            $(`#crear_${moduloId}, #editar_${moduloId}, #eliminar_${moduloId}`).prop('checked', false);
+        }
+    });
+}
+
+// Verificar si se debe desmarcar "ver" cuando no hay otros permisos activos
+function verificarDesmarcarVer(moduloId) {
+    const crear = $(`#crear_${moduloId}`).is(':checked');
+    const editar = $(`#editar_${moduloId}`).is(':checked');
+    const eliminar = $(`#eliminar_${moduloId}`).is(':checked');
+    
+    // Si ningún permiso de acción está marcado, se puede desmarcar "ver"
+    // (excepto en dashboard que siempre debe estar marcado)
+    const fila = $(`#ver_${moduloId}`).closest('tr');
+    const esDashboard = fila.data('es-dashboard');
+    
+    if (!crear && !editar && !eliminar && !esDashboard) {
+        // Opcionalmente desmarcar "ver" automáticamente
+        // $(`#ver_${moduloId}`).prop('checked', false);
+    }
+}
+
 function guardarPerfil() {
     const formData = new FormData($('#form-perfil')[0]);
+
+    const campos = [
+      "#nombre_perfil"
+    ];
+
+    for (let i = 0; i < campos.length; i++) {
+        if ($(campos[i]).val().trim() === "") {
+            getMessage("warning", "Complete todos los datos")
+
+            $(campos[i]).focus();
+            return false;
+        }
+    }
     
     $.ajax({
         url: '../../controller/perfil.php?op=guardar_perfil',
@@ -229,6 +566,11 @@ function guardarPerfil() {
             } else {
                 getMessage("error", response.message || "Error desconocido");
             }
+
+            // Recargar tabla de perfiles si existe
+            if (typeof tabla !== 'undefined') {
+                tabla.ajax.reload();
+            }
         },
         error: function(xhr, status, error) {
             getMessage("error", "Error al guardar el perfil");
@@ -236,19 +578,43 @@ function guardarPerfil() {
     });
 }
 
-// Función para seleccionar/deseleccionar todos los permisos de un tipo
+// Función mejorada para seleccionar/deseleccionar todos los permisos de un tipo
 function toggleTodosPermisos(tipo) {
-    const checkboxes = $(`input[name*="[${tipo}]"]`);
+    const checkboxes = $(`input[name*="[${tipo}]"]:not(:disabled)`);
     const todosMarcados = checkboxes.length === checkboxes.filter(':checked').length;
     
-    checkboxes.prop('checked', !todosMarcados);
+    checkboxes.each(function() {
+        const moduloId = $(this).data('modulo-id') || $(this).attr('id').split('_')[1];
+        const fila = $(this).closest('tr');
+        const esDashboard = fila.data('es-dashboard');
+        
+        // Lógica especial para dashboard
+        if (esDashboard) {
+            if (tipo === 'ver') {
+                $(this).prop('checked', true); // Dashboard siempre con ver marcado
+            }
+            return; // Salir para dashboard
+        }
+        
+        // Para otros módulos
+        $(this).prop('checked', !todosMarcados);
+        
+        // Si se está marcando crear, editar o eliminar, marcar también ver
+        if (!todosMarcados && (tipo === 'crear' || tipo === 'editar' || tipo === 'eliminar')) {
+            $(`#ver_${moduloId}`).prop('checked', true);
+        }
+        
+        // Si se está desmarcando ver, desmarcar todo
+        if (todosMarcados && tipo === 'ver') {
+            $(`#crear_${moduloId}, #editar_${moduloId}, #eliminar_${moduloId}`).prop('checked', false);
+        }
+    });
 }
 
 // Función para eliminar perfil
-function eliminarPerfil(perfil_id, nombre_perfil) {
+function eliminarPerfil(perfil_id) {
     Swal.fire({
-        title: '¿Estás seguro?',
-        text: `¿Deseas eliminar el perfil "${nombre_perfil}"? Esta acción no se puede deshacer.`,
+        text: `¿Deseas eliminar el perfil?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -266,33 +632,19 @@ function eliminarPerfil(perfil_id, nombre_perfil) {
                 },
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Eliminado',
-                            text: response.message,
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
+                        getMessage("success", response.message || "Error desconocido");
                         
                         // Recargar tabla de perfiles si existe
-                        if (typeof tablaPerfiles !== 'undefined') {
-                            tablaPerfiles.ajax.reload();
+                        if (typeof tabla !== 'undefined') {
+                            tabla.ajax.reload();
                         }
                         
                     } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: response.message
-                        });
+                        getMessage("error", response.message);
                     }
                 },
                 error: function(xhr, status, error) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Error al eliminar el perfil'
-                    });
+                    getMessage("error", 'Error al eliminar el perfil');
                 }
             });
         }

@@ -6,6 +6,7 @@ CREATE TABLE mccp_perfil (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+INSERT INTO mccp_perfil(nombre, estado, created_at, updated_at) VALUES ('Cliente', 1, now(), now());
 INSERT INTO mccp_perfil(nombre, estado, created_at, updated_at) VALUES ('Técnico', 1, now(), now());
 
 CREATE TABLE mccp_modulo (
@@ -39,7 +40,23 @@ CREATE TABLE mccp_perfil_modulo (
     UNIQUE KEY unique_rol_modulo (perfil_id, modulo_id)
 );
 
-INSERT INTO `mccp_perfil_modulo` (`perfil_id`, `modulo_id`, `puede_ver`, `puede_crear`, `puede_editar`, `puede_eliminar`, `created_at`) VALUES ('1', '4', '1', '0', '1', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('1', '1', '1', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('1', '2', '1', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('1', '3', '1', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('1', '4', '0', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('1', '5', '0', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('1', '6', '0', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('1', '7', '0', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('1', '8', '0', '0', '0', '0', now());
+
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('2', '1', '1', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('2', '2', '1', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('2', '3', '1', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('2', '4', '0', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('2', '5', '0', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('2', '6', '0', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('2', '7', '0', '0', '0', '0', now());
+INSERT INTO mccp_perfil_modulo (perfil_id, modulo_id, puede_ver, puede_crear, puede_editar, puede_eliminar, created_at) VALUES ('2', '8', '0', '0', '0', '0', now());
 
 CREATE TABLE mccp_usuario (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -48,13 +65,15 @@ CREATE TABLE mccp_usuario (
     usuario VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     rol_usuario CHAR(1) DEFAULT '1',
+    cliente_id INT,
     foto_perfil VARCHAR(255),
     numero_contacto VARCHAR(20),
     email VARCHAR(100),
     estado CHAR(1) DEFAULT '1',
     ultimo_acceso TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES mccp_cliente(id)
 );
 
 INSERT INTO `mccp_usuario` (`id`, `nombres`, `apellidos`, `usuario`, `password`, `rol_usuario`, `foto_perfil`, `numero_contacto`, `email`, `estado`, `ultimo_acceso`, `created_at`, `updated_at`) VALUES (NULL, 'Jean Flabio', 'Moreno Curay', 'flabio.moreno', '$2y$10$lKv6v5m0JzlglYEWLZc5nORmbPi/QmrOre89F1G488pCvEkwr5cv.', '1', 'default.png', '934880237', 'jflabiomorenoc@gmail.com', '1', NULL, current_timestamp(), current_timestamp());
@@ -64,14 +83,12 @@ CREATE TABLE mccp_usuario_perfil (
     usuario_id INT NOT NULL,
     perfil_id INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     -- Evita que el mismo usuario tenga el mismo perfil más de una vez
     UNIQUE KEY unique_usuario_perfil (usuario_id, perfil_id),
     -- Claves foráneas
     FOREIGN KEY (usuario_id) REFERENCES mccp_usuario(id) ON DELETE CASCADE,
     FOREIGN KEY (perfil_id) REFERENCES mccp_perfil(id) ON DELETE CASCADE
 );
-
 
 CREATE TABLE mccp_proveedor (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -224,3 +241,21 @@ CREATE TABLE mccp_incidencia_foto (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (comentario_id) REFERENCES mccp_incidencia_comentario(id) ON DELETE CASCADE
 );
+
+--TRIGGER
+
+-- EDITAR USUARIO
+
+DELIMITER $$
+
+CREATE TRIGGER mccp_usuario_upd
+BEFORE UPDATE ON mccp_usuario
+FOR EACH ROW
+BEGIN
+    IF OLD.rol_usuario = 2 AND NEW.rol_usuario = 1 THEN
+        DELETE FROM mccp_usuario_perfil 
+        WHERE usuario_id = OLD.id;  -- ✅
+    END IF;
+END$$
+
+DELIMITER ;
