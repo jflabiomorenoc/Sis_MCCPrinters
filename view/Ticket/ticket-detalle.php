@@ -118,7 +118,6 @@ include "../MainHeader/header.php";
                 overflow: hidden;
                 text-overflow: ellipsis;
                 display: -webkit-box;
-                -webkit-line-clamp: 2;
                 -webkit-box-orient: vertical;
                 max-width: 100%;
                 color: #495057;
