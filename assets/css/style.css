@@ -22586,12 +22586,6 @@ pre[class*=language-]:after, pre[class*=language-]:before {
     .table-responsive {
         border: none;
     }
-    
-    /* Ocultar columnas menos importantes en pantallas muy pequeñas */
-    .table td:nth-child(3),
-    .table th:nth-child(3) {
-        display: none;
-    }
 }
 
 /* Mejoras adicionales para espaciado */
