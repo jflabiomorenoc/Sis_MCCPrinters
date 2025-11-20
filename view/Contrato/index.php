@@ -40,6 +40,9 @@ include "../MainHeader/header.php";
                                     <h5 class="mb-3 mb-sm-0">Lista de contratos</h5>
                                     <div>
                                         <a style="color: #fff;" id="btnNuevo" onclick="return modalNuevo();" class="btn btn-primary">Nuevo</a>
+                                        <a class="btn btn-outline-success btn-reporte" data-bs-toggle="tooltip" title="Descargar reporte" href="../../controller/reporte.php?op=contratos">
+                                            <i class="ph-duotone ph-microsoft-excel-logo"></i>
+                                        </a>
                                     </div>
                                 </div>
                             </div>

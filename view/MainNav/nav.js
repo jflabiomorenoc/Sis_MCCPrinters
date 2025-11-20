@@ -60,12 +60,10 @@ function esUsuarioAdministrador() {
     return esAdministrador === true;
 }
 
-// ✅ NUEVA FUNCIÓN: Verificar si tiene un perfil específico
 function tienePerfil(perfil_id) {
     return perfilesUsuario.includes(parseInt(perfil_id));
 }
 
-// ✅ NUEVA FUNCIÓN: Verificar si es técnico
 function esUsuarioTecnico() {
     return tienePerfil(2);  // perfil_id = 2 (Técnico)
 }
@@ -239,6 +237,9 @@ async function verificarPermisoServidor(modulo, accion = 'ver') {
 }
 
 function aplicarPermisosUI(modulo) {
+
+    $('.btn-reporte').hide();
+
     // Si no tiene permiso para ver, redirigir
     if (!tienePermiso(modulo, 'ver')) {
         window.location.href = '../error.php';
@@ -264,12 +265,14 @@ function aplicarPermisosUI(modulo) {
         $('.btn-eliminar').hide();
     }
 
+    $('#btnVerTodos').hide();
+
     // ✅ NUEVO: Mostrar botón "Ver todos" SOLO para técnicos
     if (esUsuarioTecnico() && !esAdministrador) {
-        console.log('✅ Mostrando botón Ver Todos (usuario técnico)');
         $('#btnVerTodos').show();
-    } else {
-        console.log('❌ Ocultando botón Ver Todos (no es técnico o es admin)');
+        $('.reporte-ticket').show();
+    } else if (esAdministrador) {
+        $('.btn-reporte').show();
         $('#btnVerTodos').hide();
     }
 }

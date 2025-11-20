@@ -41,6 +41,9 @@ include "../MainHeader/header.php";
                                     <div class="d-flex gap-2">
                                         <a style="color: #fff;" id="btnNuevo" onclick="return modalNuevo();" class="btn btn-primary">Nuevo</a>
                                         <a id="btnVerTodos" class="btn btn-outline-secondary" onclick="toggleVerTodos()">Ver todos</a>
+                                        <a class="btn btn-outline-success btn-reporte reporte-ticket" data-bs-toggle="tooltip" title="Descargar reporte" href="../../controller/reporte.php?op=tickets">
+                                            <i class="ph-duotone ph-microsoft-excel-logo"></i>
+                                        </a>
                                     </div>
                                 </div>
                             </div>

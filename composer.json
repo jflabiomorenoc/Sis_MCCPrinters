@@ -1,0 +1,7 @@
+{
+    "require": {
+        "phpmailer/phpmailer": "^6.9",
+        "verot/class.upload.php": "^2.1",
+        "phpoffice/phpspreadsheet": "^4.1"
+    }
+}
