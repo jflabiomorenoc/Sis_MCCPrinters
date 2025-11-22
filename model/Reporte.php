@@ -9,7 +9,6 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-
 class Reporte extends Conectar {
 
     public function generarExcelClientes() {
@@ -33,7 +32,9 @@ class Reporte extends Conectar {
                     UPPER(dc.provincia) provincia,
                     UPPER(dc.distrito) distrito,
                     UPPER(dc.direccion) direccion,
-                    IFNULL(CONCAT(cd.nombre_contacto, ' - ', cd.telefono_contacto), '-') contacto
+                    IFNULL(cd.nombre_contacto, '-') contacto,
+                    IFNULL(cd.telefono_contacto, '-') telefono_contacto,
+                    IFNULL(cd.fecha_cumple, '-') fecha_cumple
                 FROM mccp_direccion_cliente dc
                 LEFT JOIN mccp_contacto_direccion cd ON cd.direccion_id = dc.id
                 LEFT JOIN mccp_cliente c ON c.id = dc.cliente_id
@@ -58,7 +59,9 @@ class Reporte extends Conectar {
             'F' => ['PROVINCIA', 30],
             'G' => ['DISTRITO', 30],
             'H' => ['DIRECCION / PRINCIPAL / SECUNDARIAS', 65],
-            'I' => ['DATOS DE LOS CONTACTOS', 30]
+            'I' => ['CONTACTO', 30],
+            'J' => ['TELÉFONO', 20],
+            'K' => ['FECHA CUMPLEAÑOS', 15]
         ];
 
         foreach ($encabezados as $columna => [$titulo, $ancho]) {
@@ -67,21 +70,21 @@ class Reporte extends Conectar {
         }
 
         // Aplicar formato a las cabeceras
-        $hojaActiva->getStyle('A1:I1')->getFont()->setBold(true);
-        $hojaActiva->getStyle('A1:I1')->getFont()->getColor()->setARGB(Color::COLOR_BLACK);
-        $hojaActiva->getStyle('A1:I1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $hojaActiva->getStyle('A1:I1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-        $hojaActiva->getStyle('A1:I1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF00'); // Amarillo
-        $hojaActiva->setAutoFilter('A1:I1');
+        $hojaActiva->getStyle('A1:K1')->getFont()->setBold(true);
+        $hojaActiva->getStyle('A1:K1')->getFont()->getColor()->setARGB(Color::COLOR_BLACK);
+        $hojaActiva->getStyle('A1:K1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $hojaActiva->getStyle('A1:K1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $hojaActiva->getStyle('A1:K1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF00');
+        $hojaActiva->setAutoFilter('A1:K1');
 
         // Aplicar alineación centrada a varias columnas
-        $columnasCentradas = ['A', 'B', 'C', 'E', 'F', 'G', 'I'];
+        $columnasCentradas = ['A', 'B', 'C', 'E', 'F', 'G', 'J', 'K'];
         foreach ($columnasCentradas as $col) {
             $hojaActiva->getStyle($col)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 
         // Ajustar el texto en ciertas columnas
-        $columnasAjuste = ['D', 'E', 'F', 'H'];
+        $columnasAjuste = ['D', 'E', 'F', 'H', 'I', 'K'];
         foreach ($columnasAjuste as $col) {
             $hojaActiva->getStyle($col)->getAlignment()->setWrapText(true);
         }
@@ -114,8 +117,12 @@ class Reporte extends Conectar {
                 ];
             }
             
-            if (!empty($row['contacto'])) {
-                $grupos[$clienteKey]['direcciones'][$direccionKey]['contactos'][] = $row['contacto'];
+            if (!empty($row['contacto']) && $row['contacto'] != '-') {
+                $grupos[$clienteKey]['direcciones'][$direccionKey]['contactos'][] = [
+                    'nombre' => $row['contacto'],
+                    'telefono' => $row['telefono_contacto'],
+                    'cumpleanos' => $row['fecha_cumple']
+                ];
             }
         }
 
@@ -124,7 +131,6 @@ class Reporte extends Conectar {
         
         foreach ($grupos as $cliente) {
             $filaInicioCliente = $fila;
-            $totalDireccionesCliente = count($cliente['direcciones']);
             
             foreach ($cliente['direcciones'] as $direccion) {
                 $filaInicioDireccion = $fila;
@@ -133,11 +139,23 @@ class Reporte extends Conectar {
                 // Llenar contactos (o dejar vacío si no hay)
                 if (count($direccion['contactos']) > 0) {
                     foreach ($direccion['contactos'] as $contacto) {
-                        $hojaActiva->setCellValue('I' . $fila, $contacto);
+                        $hojaActiva->setCellValue('I' . $fila, $contacto['nombre']);
+                        $hojaActiva->setCellValue('J' . $fila, $contacto['telefono']);
+                        
+                        // Formatear fecha de cumpleaños
+                        $fechaCumple = $contacto['cumpleanos'];
+                        if ($fechaCumple != '-' && $fechaCumple != null) {
+                            $hojaActiva->setCellValue('K' . $fila, date('d/m/Y', strtotime($fechaCumple)));
+                        } else {
+                            $hojaActiva->setCellValue('K' . $fila, '-');
+                        }
+                        
                         $fila++;
                     }
                 } else {
-                    $hojaActiva->setCellValue('I' . $fila, 'NULL');
+                    $hojaActiva->setCellValue('I' . $fila, '-');
+                    $hojaActiva->setCellValue('J' . $fila, '-');
+                    $hojaActiva->setCellValue('K' . $fila, '-');
                     $fila++;
                 }
                 
@@ -174,10 +192,10 @@ class Reporte extends Conectar {
         }
 
         // Aplicar alineación vertical centrada a todas las celdas combinadas
-        $hojaActiva->getStyle("A2:I" . ($fila - 1))->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $hojaActiva->getStyle("A2:K" . ($fila - 1))->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
         // Aplicar bordes a todas las celdas con datos
-        $rangoConDatos = "A1:I" . ($fila - 1);
+        $rangoConDatos = "A1:K" . ($fila - 1);
         $styleBordes = [
             'borders' => [
                 'allBorders' => [
