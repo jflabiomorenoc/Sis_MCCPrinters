@@ -115,15 +115,6 @@ function construirMenu(modulos, esAdmin) {
             url: '../Perfil/',
             icono: '#custom-share-bold',
             id: ''
-        },
-        'Reportes': {
-            url: '#!',
-            icono: '#custom-note-1',
-            id: '',
-            submenu: [
-                { nombre: 'Reporte 1', url: '../demo/layout-vertical.html' },
-                { nombre: 'Reporte 2', url: '../demo/layout-horizontal.html' }
-            ]
         }
     };
     
