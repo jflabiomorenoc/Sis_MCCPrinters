@@ -35,7 +35,7 @@ switch($_GET["op"]){
             $sub_array[] = '<a style="cursor: pointer" class="fw-semibold" onclick="verContrato(' . $row["contrato_id"] . ')">' . $row["numero_contrato"] . '</a>';
 
             if ($row['equipo_id']) {
-                $sub_array[] = '<a style="cursor: pointer" class="fw-semibold" onclick="verEquipo(' . $row["equipo_id"] . ', ' . $row["contrato_id"] . ')">' . $row["numero_serie"] . '</a>';
+                $sub_array[] = '<a style="cursor: pointer" class="fw-semibold" onclick="verEquipo(' . $row["contrato_equipo_id"] . ')">' . $row["numero_serie"] . '</a>';
             } else {
                 $sub_array[] = $row["numero_serie"];
             }
@@ -188,6 +188,7 @@ switch($_GET["op"]){
                 $output["contrato_id"]          = $row["contrato_id"];
                 $output["numero_contrato"]      = $row["numero_contrato"];
                 $output["equipo_id"]            = $row["equipo_id"];
+                $output["contrato_equipo_id"]   = $row["contrato_equipo_id"];
                 $output["tipo_equipo"]          = $row["tipo_equipo"];
                 $output["numero_serie"]         = $row["numero_serie"];
                 $output["fecha_incidencia"]     = $row["fecha_incidencia"];
@@ -201,10 +202,9 @@ switch($_GET["op"]){
 
     case "ver_equipo":
         try {
-            $equipo_id = isset($_POST['equipo_id']) ? intval($_POST['equipo_id']) : 0;
-            $contrato_id = isset($_POST['contrato_id']) ? intval($_POST['contrato_id']) : 0;
+            $contrato_equipo_id = isset($_POST['contrato_equipo_id']) ? intval($_POST['contrato_equipo_id']) : 0;
             
-            if ($equipo_id <= 0 || $contrato_id <= 0) {
+            if ($contrato_equipo_id <= 0) {
                 echo json_encode([
                     'status' => 'error',
                     'message' => 'Parámetros inválidos'
@@ -212,7 +212,7 @@ switch($_GET["op"]){
                 exit;
             }
             
-            $data = $ticket->obtener_info_equipo($equipo_id, $contrato_id);
+            $data = $ticket->obtener_info_equipo($contrato_equipo_id);
             
             if ($data) {
                 echo json_encode([

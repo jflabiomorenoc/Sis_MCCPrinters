@@ -184,7 +184,8 @@ class Contrato extends Conectar{
             eq.tipo_equipo
         FROM mccp_contrato_equipo ce
         INNER JOIN mccp_equipo eq ON ce.equipo_id = eq.id
-        WHERE ce.contrato_id = ?
+        WHERE ce.contrato_id = ? AND
+        ce.estado != 'retirado'
         ORDER BY ce.created_at DESC";
         
         $stmt = $conectar->prepare($sql);
@@ -200,8 +201,8 @@ class Contrato extends Conectar{
         
         try {
             $sql = "INSERT INTO mccp_contrato_equipo 
-                    (contrato_id, direccion_id, equipo_id, ip_equipo, area_ubicacion, contador_inicial_bn, contador_final_bn, contador_inicial_color, contador_final_color)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    (contrato_id, direccion_id, equipo_id, ip_equipo, area_ubicacion, contador_inicial_bn, contador_final_bn, contador_inicial_color, contador_final_color, fecha_inicio, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())";
             
             $stmt = $conectar->prepare($sql);
             $stmt->bindValue(1, $contrato_id);
@@ -310,7 +311,9 @@ class Contrato extends Conectar{
         try {
             $conectar->beginTransaction();
             
-            $sql = "DELETE FROM mccp_contrato_equipo WHERE id = ?";
+            $sql = "UPDATE mccp_contrato_equipo 
+                    SET estado = 'retirado', fecha_retiro = NOW() 
+                    WHERE id = ?";
             
             $stmt = $conectar->prepare($sql);
             $stmt->bindValue(1, $contrato_equipo_id);

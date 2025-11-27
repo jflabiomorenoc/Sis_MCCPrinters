@@ -1,6 +1,6 @@
 <!-- Modal Ver Equipo -->
 <div class="modal fade" id="modal_ver_equipo" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">

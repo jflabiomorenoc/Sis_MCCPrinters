@@ -257,7 +257,7 @@ function calcularDuracion(fechaInicio, fechaFin) {
     return duracionTexto;
 }
 
-function verEquipo(equipo_id, contrato_id) {
+function verEquipo(contrato_equipo_id) {
     // Mostrar modal
     $('#modal_ver_equipo').modal('show');
     
@@ -270,8 +270,7 @@ function verEquipo(equipo_id, contrato_id) {
         url: '../../controller/ticket.php?op=ver_equipo',
         type: 'POST',
         data: {
-            equipo_id: equipo_id,
-            contrato_id: contrato_id
+            contrato_equipo_id: contrato_equipo_id
         },
         dataType: 'json',
         success: function(response) {

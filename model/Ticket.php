@@ -33,6 +33,7 @@ class Ticket extends Conectar{
                     THEN e.numero_serie
                 ELSE '-'
             END numero_serie,
+            i.contrato_equipo_id,
             i.fecha_incidencia,
             i.fecha_atencion,
             i.tiempo_atencion,
@@ -63,18 +64,33 @@ class Ticket extends Conectar{
         $conectar=parent::conexion();
         parent::set_names();
 
+        // Calcular el tiempo de atención en horas
+        $sql = "SELECT id
+                FROM mccp_contrato_equipo 
+                WHERE contrato_id = ? AND
+                      equipo_id = ?";
+        $sql = $conectar->prepare($sql);
+        $sql->bindValue(1, $contrato_id);
+        $sql->bindValue(2, $equipo_id);
+        $sql->execute();
+        $contrato = $sql->fetch(PDO::FETCH_ASSOC);
+        
+        // Calcular tiempo total en horas con decimales (ej: 24.50 = 24 horas y 30 minutos)
+        $contrato_equipo_id = $contrato['id'];
+
         try {
-            $sql = "INSERT INTO mccp_incidencia (tipo_incidencia, cliente_id, contrato_id, equipo_id, fecha_incidencia, tecnico_id, descripcion_problema, estado, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', NOW(), NOW())";
+            $sql = "INSERT INTO mccp_incidencia (tipo_incidencia, cliente_id, contrato_id, equipo_id, contrato_equipo_id, fecha_incidencia, tecnico_id, descripcion_problema, estado, created_at, updated_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', NOW(), NOW())";
 
             $sql = $conectar->prepare($sql);
             $sql->bindValue(1, $tipo_incidencia);
             $sql->bindValue(2, $cliente_id);
             $sql->bindValue(3, $contrato_id);
             $sql->bindValue(4, $equipo_id);
-            $sql->bindValue(5, $fecha_incidencia);
-            $sql->bindValue(6, $tecnico_id);
-            $sql->bindValue(7, $descripcion_problema);
+            $sql->bindValue(5, $contrato_equipo_id);
+            $sql->bindValue(6, $fecha_incidencia);
+            $sql->bindValue(7, $tecnico_id);
+            $sql->bindValue(8, $descripcion_problema);
 
             if($sql->execute()) {
                 $jsonData['success'] = 1;
@@ -109,6 +125,7 @@ class Ticket extends Conectar{
             i.contrato_id,
             ca.numero_contrato,
             i.equipo_id,
+            i.contrato_equipo_id,
             e.numero_serie,
             e.tipo_equipo,
             i.tecnico_id,
@@ -137,12 +154,27 @@ class Ticket extends Conectar{
         $conectar = parent::conexion();
         parent::set_names();
 
+        // Calcular el tiempo de atención en horas
+        $sql = "SELECT id
+                FROM mccp_contrato_equipo 
+                WHERE contrato_id = ? AND
+                      equipo_id = ?";
+        $sql = $conectar->prepare($sql);
+        $sql->bindValue(1, $contrato_id);
+        $sql->bindValue(2, $equipo_id);
+        $sql->execute();
+        $contrato = $sql->fetch(PDO::FETCH_ASSOC);
+        
+        // Calcular tiempo total en horas con decimales (ej: 24.50 = 24 horas y 30 minutos)
+        $contrato_equipo_id = $contrato['id'];
+
         try {
             $sql_upd = "UPDATE mccp_incidencia SET
                     tipo_incidencia = ?, 
                     cliente_id = ?, 
                     contrato_id = ?,
                     equipo_id = ?,
+                    contrato_equipo_id = ?,
                     fecha_incidencia = ?,
                     tecnico_id = ?,
                     descripcion_problema = ?,
@@ -158,14 +190,15 @@ class Ticket extends Conectar{
             $sql_upd->bindValue(2, $cliente_id);
             $sql_upd->bindValue(3, $contrato_id);
             $sql_upd->bindValue(4, $equipo_id);
-            $sql_upd->bindValue(5, $fecha_incidencia);
-            $sql_upd->bindValue(6, $tecnico_id);
-            $sql_upd->bindValue(7, $descripcion_problema);
-            $sql_upd->bindValue(8, $fecha_atencion);
-            $sql_upd->bindValue(9, $contador_final_bn);
-            $sql_upd->bindValue(10, $contador_final_color);
-            $sql_upd->bindValue(11, $observaciones);
-            $sql_upd->bindValue(12, $ticket_id);
+            $sql_upd->bindValue(5, $contrato_equipo_id);
+            $sql_upd->bindValue(6, $fecha_incidencia);
+            $sql_upd->bindValue(7, $tecnico_id);
+            $sql_upd->bindValue(8, $descripcion_problema);
+            $sql_upd->bindValue(9, $fecha_atencion);
+            $sql_upd->bindValue(10, $contador_final_bn);
+            $sql_upd->bindValue(11, $contador_final_color);
+            $sql_upd->bindValue(12, $observaciones);
+            $sql_upd->bindValue(13, $ticket_id);
 
             if($sql_upd->execute()){
                 $jsonData['success'] = 1;
@@ -184,7 +217,7 @@ class Ticket extends Conectar{
         echo json_encode($jsonData);
     }
 
-    public function obtener_info_equipo($equipo_id, $contrato_id) {
+    public function obtener_info_equipo($contrato_equipo_id) {
         $conectar = parent::conexion();
         parent::set_names();
         
@@ -208,13 +241,11 @@ class Ticket extends Conectar{
             FROM mccp_contrato_equipo ce
             INNER JOIN mccp_equipo e ON e.id = ce.equipo_id
             INNER JOIN mccp_direccion_cliente d ON d.id = ce.direccion_id
-            WHERE ce.equipo_id = ? 
-            AND ce.contrato_id = ?
+            WHERE ce.id = ?
             LIMIT 1";
         
         $stmt = $conectar->prepare($sql);
-        $stmt->bindValue(1, $equipo_id, PDO::PARAM_INT);
-        $stmt->bindValue(2, $contrato_id, PDO::PARAM_INT);
+        $stmt->bindValue(1, $contrato_equipo_id, PDO::PARAM_INT);
         $stmt->execute();
         
         return $stmt->fetch(PDO::FETCH_ASSOC);

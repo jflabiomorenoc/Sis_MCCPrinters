@@ -197,13 +197,15 @@ CREATE TABLE mccp_contrato_equipo (
     contador_inicial_color INT DEFAULT 0,
     contador_final_bn INT,
     contador_final_color INT,
-    estado ENUM('vigente', 'finalizado', 'cancelado') DEFAULT 'vigente',
+    estado ENUM('vigente', 'finalizado', 'cancelado', 'retirado') DEFAULT 'vigente',
+    fecha_inicio DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fecha_retiro DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (contrato_id) REFERENCES mccp_contrato_alquiler(id) ON DELETE CASCADE,
     FOREIGN KEY (direccion_id) REFERENCES mccp_direccion_cliente(id),
     FOREIGN KEY (equipo_id) REFERENCES mccp_equipo(id) ON DELETE RESTRICT,
-    UNIQUE KEY (contrato_id, equipo_id)
+    INDEX idx_contrato_equipo_estado (contrato_id, equipo_id, estado)
 );
 
 CREATE TABLE mccp_incidencia (
@@ -215,6 +217,7 @@ CREATE TABLE mccp_incidencia (
     cliente_id INT NOT NULL,
     contrato_id INT,
     equipo_id INT,
+    contrato_equipo_id INT,
     tecnico_id INT,                                   
     fecha_atencion DATETIME,
     contador_final_bn INT,
@@ -229,6 +232,7 @@ CREATE TABLE mccp_incidencia (
     FOREIGN KEY (cliente_id) REFERENCES mccp_cliente(id),
     FOREIGN KEY (contrato_id) REFERENCES mccp_contrato_alquiler(id),
     FOREIGN KEY (equipo_id) REFERENCES mccp_equipo(id),
+    FOREIGN KEY (contrato_equipo_id) REFERENCES mccp_contrato_equipo(id),
     FOREIGN KEY (tecnico_id) REFERENCES mccp_usuario(id)
 );
 
@@ -388,7 +392,7 @@ BEGIN
     END IF;
     
     -- Si el estado del contrato_equipo cambió a 'finalizado' o 'cancelado'
-    IF NEW.estado IN ('finalizado', 'cancelado') AND OLD.estado != NEW.estado THEN
+    IF NEW.estado IN ('finalizado', 'cancelado', 'retirado') AND OLD.estado != NEW.estado THEN
         -- Cambiar el equipo a 'activo'
         UPDATE mccp_equipo
         SET estado = 'activo'
