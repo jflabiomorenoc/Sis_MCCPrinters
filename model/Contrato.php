@@ -2,13 +2,19 @@
 date_default_timezone_set('America/Bogota');
 class Contrato extends Conectar{
 
-    public function listar() {
+    public function listar($ver_todos = 0) {
         $conectar=parent::conexion();
         parent::set_names();
 
         require_once("Dashboard.php");
         $dashboard = new Dashboard();
-        $filtro = $dashboard->construir_filtro_usuario($_SESSION['id'], $_SESSION['rol_usuario'], 'contratos');
+
+        // Si ver_todos = 1, no aplicar filtro técnico
+        if ($_SESSION['rol_usuario'] != 1 && $ver_todos == 0) {
+            $filtro = $dashboard->construir_filtro_usuario($_SESSION['id'], $_SESSION['rol_usuario'], 'contratos');
+        } else {
+            $filtro = ['sql' => '', 'params' => []];
+        }
 
         $sql = "SELECT 
         ca.id,

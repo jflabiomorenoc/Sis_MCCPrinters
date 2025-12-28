@@ -87,12 +87,11 @@ function cargarTecnicosDisponibles(tecnico_id_actual = null) {
     );
 }
 
+let tabla;
+let verTodos = false;
+
 function listarContrato() {
-    // Destruir la tabla si ya existe
-    if ($.fn.DataTable.isDataTable('#data_contrato')) {
-        $('#data_contrato').DataTable().clear().destroy();
-    }
-    
+       
     tabla = $('#data_contrato').DataTable({
         "aProcessing": true,
         "aServerSide": true,
@@ -114,8 +113,11 @@ function listarContrato() {
             url: '../../controller/contrato.php?op=listar',
             type : "post",
             dataType : "json",						
-            error: function(e){
-                console.log(e.responseText);	
+            data: function (d) {
+                d.ver_todos = verTodos ? 1 : 0; // 🔹 parámetro adicional
+            },
+            error: function(e) {
+                console.log(e.responseText);
             }
         },
         
@@ -143,6 +145,16 @@ function listarContrato() {
                '<"row"<"col-sm-12"tr>>' +
                '<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
     });
+}
+
+function toggleVerTodos() {
+    verTodos = !verTodos;
+    $('#btnVerTodos')
+        .text(verTodos ? 'Ver asignados' : 'Ver todos')
+        .toggleClass('btn-outline-secondary btn-outline-success');
+    
+    // 🔹 recarga sin parpadeo
+    tabla.ajax.reload(null, false);
 }
 
 function modalNuevo() {

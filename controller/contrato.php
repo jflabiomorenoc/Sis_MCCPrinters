@@ -12,6 +12,7 @@ $permisos = $perfil->obtenerPermisosModulo($_SESSION['id'], 'Contratos');
 switch($_GET["op"]){
 
     case "listar":
+        $ver_todos = isset($_POST['ver_todos']) ? intval($_POST['ver_todos']) : 0;
         // Verificar sesión
         if (!isset($_SESSION['id'])) {
             echo json_encode([
@@ -23,7 +24,7 @@ switch($_GET["op"]){
             exit;
         }
         
-        $datos = $contrato->listar();
+        $datos = $contrato->listar($ver_todos);
         $data = Array();
         
         foreach($datos as $row){
