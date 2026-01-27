@@ -333,7 +333,7 @@ switch($_GET["op"]){
                     $comentario_id = $responseComentario['comentario_id'];
                     
                     // Si hay archivos, procesarlos (imágenes, videos, PDFs)
-                    if (isset($_FILES['imagenes']) && !empty($_FILES['imagenes']['name'][0])) {
+                    if (isset($_FILES['imagenes']) && is_array($_FILES['imagenes']['name']) && !empty($_FILES['imagenes']['name'][0])) {
                         
                         // Directorios según tipo de archivo
                         $upload_dirs = [
