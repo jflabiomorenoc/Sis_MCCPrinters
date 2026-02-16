@@ -21,6 +21,8 @@
 
         <link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" />
 
+        <link rel="stylesheet" href="../../assets/css/style-preset.css">
+
         <script src="../../assets/js/tech-stack.js"></script>
         <script async src="https://www.googletagmanager.com/gtag/js?id="></script>
         <script>

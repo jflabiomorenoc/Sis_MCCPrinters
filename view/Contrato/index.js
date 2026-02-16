@@ -31,6 +31,13 @@ $(document).ready(function () {
         $('#direccion_id').prop('disabled', true);
         $('#cliente_id').data('modo-edicion', false);
     });
+
+    $('#estado_equipo').select2({
+        theme: 'bootstrap-5',
+        placeholder: "-- Seleccionar --",
+        allowClear: true,
+        width: '100%'
+    });
 });
 
 function cargarClienteDisponibles(cliente_id_actual = null) {
@@ -269,4 +276,67 @@ function cerrarModal() {
     $('#contrato_id').val('');
 
     $('#modal_contrato').modal('hide');
+}
+
+function modalExcel() {
+    $('#form-reporte')[0].reset();
+    $('#modalReporteLabel').text('Descargar reporte de contrato');
+    $('#modal_reporte').modal('show');
+}
+
+function descargarReporte() {
+    // Obtener los valores seleccionados
+    var estadosSeleccionados = $('#estado_equipo').val();
+    
+    // Validar que haya al menos un estado seleccionado
+    // Verificar si es null, undefined, array vacío o string vacío
+    if (!estadosSeleccionados || estadosSeleccionados.length === 0 || 
+        (Array.isArray(estadosSeleccionados) && estadosSeleccionados.filter(function(val) { 
+            return val !== '' && val !== null; 
+        }).length === 0)) {
+        getMessage("warning", "Debe seleccionar al menos un estado");
+        return false;
+    }
+    
+    // Filtrar valores vacíos
+    estadosSeleccionados = estadosSeleccionados.filter(function(val) {
+        return val !== '' && val !== null && val !== undefined;
+    });
+    
+    // Validar nuevamente después del filtro
+    if (estadosSeleccionados.length === 0) {
+        getMessage("warning", "Debe seleccionar al menos un estado");
+        return false;
+    }
+    
+    // Crear formulario temporal
+    var form = $('<form>', {
+        'method': 'POST',
+        'action': '../../controller/reporte.php?op=contratos',
+    });
+    
+    // Agregar los estados como campos hidden
+    $.each(estadosSeleccionados, function(index, valor) {
+        form.append($('<input>', {
+            'type': 'hidden',
+            'name': 'estado_equipo[]',
+            'value': valor
+        }));
+    });
+    
+    // Enviar y eliminar
+    form.appendTo('body').submit().remove();
+    
+    // Cerrar modal primero
+    $('#modal_reporte').modal('hide');
+    
+    // Resetear el formulario después de cerrar con todos los valores seleccionados
+    setTimeout(function() {
+        $('#form-reporte')[0].reset();
+        // Seleccionar todos los valores
+        $('#estado_equipo').val(['vigente', 'finalizado', 'cancelado', 'retirado']).trigger('change');
+    }, 300);
+    
+    // Mostrar mensaje de confirmación
+    getMessage("success", "Descargando reporte...");
 }

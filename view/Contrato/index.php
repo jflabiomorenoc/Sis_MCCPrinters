@@ -41,7 +41,7 @@ include "../MainHeader/header.php";
                                     <div>
                                         <a style="color: #fff;" id="btnNuevo" onclick="return modalNuevo();" class="btn btn-primary">Nuevo</a>
                                         <a id="btnVerTodos" class="btn btn-outline-secondary" onclick="toggleVerTodos()">Ver todos</a>
-                                        <a class="btn btn-outline-success btn-reporte" data-bs-toggle="tooltip" title="Descargar reporte" href="../../controller/reporte.php?op=contratos">
+                                        <a class="btn btn-outline-success btn-reporte" data-bs-toggle="tooltip" title="Descargar reporte" onclick="modalExcel()">
                                             <i class="ph-duotone ph-microsoft-excel-logo"></i>
                                         </a>
                                     </div>
@@ -71,6 +71,7 @@ include "../MainHeader/header.php";
         </div><!-- [ Main Content ] end -->
 
         <?php include "modal_form.php"; ?>
+        <?php include "modal_reporte.php"; ?>
     
 <?php
 include "../MainFooter/footer.php";

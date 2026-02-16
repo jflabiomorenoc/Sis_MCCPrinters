@@ -13,7 +13,8 @@ switch($_GET["op"]){
         break;
 
     case "contratos":
-        $reporte->generarExcelContratos();
+        $estados = isset($_POST['estado_equipo']) ? $_POST['estado_equipo'] : [];
+        $reporte->generarExcelContratos($estados);
         break;
 
     case "tickets":

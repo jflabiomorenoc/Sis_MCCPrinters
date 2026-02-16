@@ -409,11 +409,19 @@ class Reporte extends Conectar {
         exit;
     }
 
-    public function generarExcelContratos() {
+    public function generarExcelContratos($estados = []) {
         require '../vendor/autoload.php';
 
         $conectar = parent::conexion();
         parent::set_names();
+
+        // Construir la cláusula WHERE para filtrar por estados
+        $whereEstados = "";
+        if (!empty($estados)) {
+            $placeholders = str_repeat('?,', count($estados) - 1) . '?';
+            $whereEstados = " WHERE ce.estado IN ($placeholders)";
+        }
+    
         $sql="SELECT
                 ca.id,
                 ca.numero_contrato,
@@ -440,8 +448,10 @@ class Reporte extends Conectar {
                 UPPER(e.condicion) condicion,
                 ce.ip_equipo,
                 dc.direccion,
+                ce.area_ubicacion,
                 ce.contador_inicial_bn,
                 ce.contador_inicial_color,
+                UPPER(ce.estado) estado_equipo,
                 IFNULL((
                     SELECT contador_final_bn
                     FROM mccp_incidencia
@@ -483,10 +493,18 @@ class Reporte extends Conectar {
             JOIN mccp_cliente c ON ca.cliente_id = c.id
             LEFT JOIN mccp_direccion_cliente dc ON dc.id = ce.direccion_id
             LEFT JOIN mccp_usuario u ON ca.tecnico_id = u.id
+            " . $whereEstados . "
             ORDER BY ca.numero_contrato DESC, e.id ASC";
         
         $stmt = $conectar->prepare($sql);
-        $stmt->execute();
+        
+        // Vincular los parámetros si hay estados
+        if (!empty($estados)) {
+            $stmt->execute($estados);
+        } else {
+            $stmt->execute();
+        }
+        
         $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $spreadsheet = new Spreadsheet();
@@ -508,13 +526,15 @@ class Reporte extends Conectar {
             'K' => ['CONDICIÓN', 15],
             'L' => ['IP', 15],
             'M' => ['DIRECCIÓN EQUIPO', 60],
-            'N' => ['CONTADOR INICIAL BN', 15],
-            'O' => ['CONTADOR INICIAL COLOR', 15],
-            'P' => ['CONTADOR FINAL BN', 15],
-            'Q' => ['CONTADOR FINAL COLOR', 15],
-            'R' => ['ESTADO', 15],
-            'S' => ['CANTIDAD INCIDENCIAS PREVENTIVAS', 13],
-            'T' => ['CANTIDAD INCIDENCIAS CORRECTIVAS', 13]
+            'N' => ['UBICACIÓN', 60],
+            'O' => ['CONTADOR INICIAL BN', 15],
+            'P' => ['CONTADOR INICIAL COLOR', 15],
+            'Q' => ['CONTADOR FINAL BN', 15],
+            'R' => ['CONTADOR FINAL COLOR', 15],
+            'S' => ['ESTADO EQUIPO', 15],
+            'T' => ['ESTADO CONTRATO', 15],
+            'U' => ['CANTIDAD INCIDENCIAS PREVENTIVAS', 13],
+            'V' => ['CANTIDAD INCIDENCIAS CORRECTIVAS', 13]
         ];
         
         foreach ($encabezados as $columna => [$titulo, $ancho]) {
@@ -523,21 +543,21 @@ class Reporte extends Conectar {
         }
         
         // Aplicar formato a las cabeceras
-        $hojaActiva->getStyle('A1:T1')->getFont()->setBold(true);
-        $hojaActiva->getStyle('A1:T1')->getFont()->getColor()->setARGB(Color::COLOR_BLACK);
-        $hojaActiva->getStyle('A1:T1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $hojaActiva->getStyle('A1:T1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-        $hojaActiva->getStyle('A1:T1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF00');
-        $hojaActiva->setAutoFilter('A1:T1');
+        $hojaActiva->getStyle('A1:V1')->getFont()->setBold(true);
+        $hojaActiva->getStyle('A1:V1')->getFont()->getColor()->setARGB(Color::COLOR_BLACK);
+        $hojaActiva->getStyle('A1:V1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $hojaActiva->getStyle('A1:V1')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $hojaActiva->getStyle('A1:V1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFFF00');
+        $hojaActiva->setAutoFilter('A1:V1');
         
         // Aplicar alineación centrada a varias columnas
-        $columnasCentradas = ['A', 'B', 'C', 'D', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
+        $columnasCentradas = ['A', 'B', 'C', 'D', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V'];
         foreach ($columnasCentradas as $col) {
             $hojaActiva->getStyle($col)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
         
         // Ajustar el texto en ciertas columnas
-        $columnasAjuste = ['C', 'D', 'E', 'F', 'M', 'N', 'O', 'P', 'Q', 'S', 'T'];
+        $columnasAjuste = ['C', 'D', 'E', 'F', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V'];
         foreach ($columnasAjuste as $col) {
             $hojaActiva->getStyle($col)->getAlignment()->setWrapText(true);
         }
@@ -570,10 +590,12 @@ class Reporte extends Conectar {
                 'condicion' => $row['condicion'],
                 'ip_equipo' => $row['ip_equipo'],
                 'direccion' => $row['direccion'],
+                'area_ubicacion' => $row['area_ubicacion'],
                 'contador_inicial_bn' => $row['contador_inicial_bn'],
                 'contador_inicial_color' => $row['contador_inicial_color'],
                 'ultimo_contador_bn' => $row['ultimo_contador_bn'],
                 'ultimo_contador_color' => $row['ultimo_contador_color'],
+                'estado_equipo' => $row['estado_equipo'],
                 'total_preventivo' => $row['total_preventivo'],
                 'total_correctivo' => $row['total_correctivo']
             ];
@@ -595,16 +617,18 @@ class Reporte extends Conectar {
                 $hojaActiva->setCellValue('K' . $fila, $equipo['condicion']);
                 $hojaActiva->setCellValue('L' . $fila, $equipo['ip_equipo']);
                 $hojaActiva->setCellValue('M' . $fila, $equipo['direccion']);
-                $hojaActiva->setCellValue('N' . $fila, $equipo['contador_inicial_bn']);
-                $hojaActiva->setCellValue('O' . $fila, $equipo['contador_inicial_color']);
-                $hojaActiva->setCellValue('P' . $fila, $equipo['ultimo_contador_bn']);
-                $hojaActiva->setCellValue('Q' . $fila, $equipo['ultimo_contador_color']);
-                $hojaActiva->setCellValue('S' . $fila, $equipo['total_preventivo']);
-                $hojaActiva->setCellValue('T' . $fila, $equipo['total_correctivo']);
+                $hojaActiva->setCellValue('N' . $fila, $equipo['area_ubicacion']);
+                $hojaActiva->setCellValue('O' . $fila, $equipo['contador_inicial_bn']);
+                $hojaActiva->setCellValue('P' . $fila, $equipo['contador_inicial_color']);
+                $hojaActiva->setCellValue('Q' . $fila, $equipo['ultimo_contador_bn']);
+                $hojaActiva->setCellValue('R' . $fila, $equipo['ultimo_contador_color']);
+                $hojaActiva->setCellValue('S' . $fila, $equipo['estado_equipo']);
+                $hojaActiva->setCellValue('U' . $fila, $equipo['total_preventivo']);
+                $hojaActiva->setCellValue('V' . $fila, $equipo['total_correctivo']);
                 $fila++;
             }
             
-            // Combinar celdas del contrato (A, B, C, D, E, F, R)
+            // Combinar celdas del contrato
             $filaFinContrato = $fila - 1;
             if ($filaFinContrato > $filaInicioContrato) {
                 $hojaActiva->mergeCells("A{$filaInicioContrato}:A{$filaFinContrato}");
@@ -613,7 +637,7 @@ class Reporte extends Conectar {
                 $hojaActiva->mergeCells("D{$filaInicioContrato}:D{$filaFinContrato}");
                 $hojaActiva->mergeCells("E{$filaInicioContrato}:E{$filaFinContrato}");
                 $hojaActiva->mergeCells("F{$filaInicioContrato}:F{$filaFinContrato}");
-                $hojaActiva->mergeCells("R{$filaInicioContrato}:R{$filaFinContrato}");
+                $hojaActiva->mergeCells("T{$filaInicioContrato}:T{$filaFinContrato}");
             }
             
             // Establecer valores del contrato
@@ -623,14 +647,14 @@ class Reporte extends Conectar {
             $hojaActiva->setCellValue('D' . $filaInicioContrato, $contrato['fecha_culminacion'] ? date('d/m/Y', strtotime($contrato['fecha_culminacion'])) : '-');
             $hojaActiva->setCellValue('E' . $filaInicioContrato, $contrato['cliente']);
             $hojaActiva->setCellValue('F' . $filaInicioContrato, $contrato['responsable']);
-            $hojaActiva->setCellValue('R' . $filaInicioContrato, $contrato['estado']);
+            $hojaActiva->setCellValue('T' . $filaInicioContrato, $contrato['estado']);
         }
         
         // Aplicar alineación vertical centrada a todas las celdas
-        $hojaActiva->getStyle("A2:T" . ($fila - 1))->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $hojaActiva->getStyle("A2:V" . ($fila - 1))->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
         
         // Aplicar bordes a todas las celdas con datos
-        $rangoConDatos = "A1:T" . ($fila - 1);
+        $rangoConDatos = "A1:V" . ($fila - 1);
         $styleBordes = [
             'borders' => [
                 'allBorders' => [

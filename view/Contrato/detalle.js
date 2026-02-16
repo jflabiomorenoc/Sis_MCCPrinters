@@ -205,7 +205,7 @@ function estadoContrato(pStrEstado) {
     }
 
     Swal.fire({
-        text: `¿Deseas ${mStrText} el equipo?`,
+        text: `¿Deseas ${mStrText} el contrato?`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',

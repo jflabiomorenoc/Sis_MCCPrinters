@@ -347,7 +347,7 @@ BEGIN
         -- Actualizar todos los equipos del contrato al mismo estado
         UPDATE mccp_contrato_equipo
         SET estado = NEW.estado
-        WHERE contrato_id = NEW.id;
+        WHERE contrato_id = NEW.id AND estado = 'vigente';
     END IF;
 END$$
 
