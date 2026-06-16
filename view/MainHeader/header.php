@@ -112,7 +112,6 @@
                                         name="password_actual"
                                         placeholder="Ingrese su contraseña actual"
                                         required
-                                        autocomplete="new-password"
                                         onpaste="return false"
                                         oncopy="return false"
                                         oncut="return false">
@@ -133,7 +132,6 @@
                                         name="password_nueva"
                                         placeholder="Ingrese su nueva contraseña"
                                         required
-                                        autocomplete="new-password"
                                         onpaste="return false"
                                         oncopy="return false"
                                         oncut="return false"

@@ -229,8 +229,17 @@ switch($_GET["op"]){
             echo json_encode($output);
         }
         break;
+    
+    case "obtener_usuario_session":
+        $datos = $usuario->obtener_usuario_por_id($_SESSION["id"]);
+        if (is_array($datos) == true and count($datos) > 0) {
+           foreach ($datos as $row) {
+                $output["rol_usuario"] = $row["rol_usuario"];
+            }
+            echo json_encode($output);
+        }
+        break;
 
-    //Utilizado: Asignar Perfil TABLA USUARIO
     case "obtener_perfiles":
         $datos = $usuario->obtener_perfiles($_POST['usuario_id']);
         $data = Array();

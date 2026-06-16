@@ -384,4 +384,88 @@ class Contrato extends Conectar{
         
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function obtener_archivos_contrato($contrato_id) {
+        $conectar = parent::conexion();
+        parent::set_names();
+        
+        $sql = "SELECT 
+            id contrato_archivo_id,
+            nombre_archivo,
+            ruta_archivo,
+            tipo_archivo,
+            created_at
+        FROM mccp_contrato_alquiler_archivo
+        WHERE contrato_id = ?
+        ORDER BY created_at DESC";
+        
+        $stmt = $conectar->prepare($sql);
+        $stmt->bindValue(1, $contrato_id);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function eliminar_archivo_contrato($contrato_archivo_id) {
+        $conectar = parent::conexion();
+        parent::set_names();
+        
+        try {
+            // Primero obtener la ruta antes de eliminar
+            $sql = "SELECT ruta_archivo FROM mccp_contrato_alquiler_archivo WHERE id = ?";
+            $stmt = $conectar->prepare($sql);
+            $stmt->bindValue(1, $contrato_archivo_id);
+            $stmt->execute();
+            $archivo = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$archivo) {
+                return ['success' => false, 'message' => 'Archivo no encontrado'];
+            }
+
+            $conectar->beginTransaction();
+            
+            // Eliminar registro de BD
+            $sql = "DELETE FROM mccp_contrato_alquiler_archivo WHERE id = ?";
+            $stmt = $conectar->prepare($sql);
+            $stmt->bindValue(1, $contrato_archivo_id);
+            $stmt->execute();
+            
+            $conectar->commit();
+
+            // Eliminar archivo físico (fuera de la transacción)
+            $ruta_fisica = '../' . $archivo['ruta_archivo']; // assets/contrato/6/archivo.pdf -> ../assets/...
+            if (file_exists($ruta_fisica)) {
+                unlink($ruta_fisica);
+            }
+            
+            return ['success' => true, 'message' => 'Archivo eliminado correctamente'];
+            
+        } catch (Exception $e) {
+            $conectar->rollBack();
+            error_log("Error al eliminar el archivo: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error al eliminar el archivo'];
+        }
+    }
+
+    // Actualizar para incluir tipo de archivo
+    public function insertar_archivo_contrato($contrato_id, $nombre_archivo, $ruta_archivo, $tipo_archivo) {
+        $conectar = parent::conexion();
+        parent::set_names();
+        
+        try {
+            $sql = "INSERT INTO mccp_contrato_alquiler_archivo (contrato_id, nombre_archivo, ruta_archivo, tipo_archivo, created_at) 
+                    VALUES (?, ?, ?, ?, NOW())";
+            
+            $stmt = $conectar->prepare($sql);
+            $stmt->bindValue(1, $contrato_id);
+            $stmt->bindValue(2, $nombre_archivo);
+            $stmt->bindValue(3, $ruta_archivo);
+            $stmt->bindValue(4, $tipo_archivo);
+            
+            return $stmt->execute();
+            
+        } catch (Exception $e) {
+            return false;
+        }
+    }
 }

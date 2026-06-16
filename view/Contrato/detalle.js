@@ -1,7 +1,9 @@
 let contrato_id;
+let selectedFilesModal = []; 
 
 $(document).ready(function () {
-
+    $('#tabArchivos').hide();
+    
     $('#liContrato').addClass('active');
     
     $.urlParam = function(name) {
@@ -34,13 +36,62 @@ $(document).ready(function () {
         // Cargar información del contrato
         obtenerInfoContrato(contrato_id);
         obtenerEquiposContrato(contrato_id);
+        obtenerArchivosContrato(contrato_id);
     });
+
+    obtenerRolUsuario()
     
     // Eventos de botones
     $('#btnNuevo').on('click', function() {
         abrirModalEquipo();
     });
 
+    // Eventos de botones
+    $('#btnNuevoArchivo').on('click', function() {
+        abrirModalArchivo(contrato_id);
+    });
+
+    // ==================== MODAL ====================
+    
+    // Click en área de carga (modal)
+    $('#fileUploadAreaModal').on('click', function() {
+        $('#fileInputModal').click();
+    });
+    
+    // Cerrar modal
+    $('#closeModal, #imageModal').on('click', function(e) {
+        if (e.target === this) {
+            $('#imageModal').removeClass('active');
+        }
+    });
+
+    // Cuando se seleccionan archivos (modal)
+    $('#fileInputModal').on('change', function(e) {
+        handleFilesModal(e.target.files);
+    });
+
+    // Drag and drop (modal)
+    $('#fileUploadAreaModal').on('dragover', function(e) {
+        e.preventDefault();
+        $(this).addClass('dragover');
+    });
+    
+    $('#fileUploadAreaModal').on('dragleave', function() {
+        $(this).removeClass('dragover');
+    });
+
+    $('#fileUploadAreaModal').on('drop', function(e) {
+        e.preventDefault();
+        $(this).removeClass('dragover');
+        handleFilesModal(e.originalEvent.dataTransfer.files);
+    });
+
+    // Cerrar modal
+    $('#closeModal, #imageModal').on('click', function(e) {
+        if (e.target === this) {
+            $('#imageModal').removeClass('active');
+        }
+    });
 });
 
 function obtenerInfoContrato(contrato_id) {
@@ -511,6 +562,349 @@ function eliminarEquipo(contrato_equipo_id) {
                     if (response.success) {
                         obtenerInfoContrato(contrato_id)
                         obtenerEquiposContrato(contrato_id);
+                        getMessage("success", response.message || "Error desconocido");                        
+                    } else {
+                        getMessage("error", response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    getMessage("error", 'Error al eliminar el equipo');
+                }
+            });
+        }
+    });
+}
+
+function obtenerRolUsuario(){
+    $.post("../../controller/usuario.php?op=obtener_usuario_session", function(data) {
+        data = JSON.parse(data);
+        
+        if(data.rol_usuario == 1) {
+            $('#tabArchivos').show();
+        }
+    });
+}
+
+function obtenerArchivosContrato(contrato_id) {
+    if ($.fn.DataTable.isDataTable('#tabla-archivos')) {
+        $('#tabla-archivos').DataTable().clear().destroy();
+    }
+    
+    tabla_archivos = $('#tabla-archivos').DataTable({
+        "aProcessing": true,
+        "aServerSide": true,
+        "searching": true,
+        lengthChange: false,
+        colReorder: true,
+        "ordering": false,
+        "iDisplayLength": 10,
+        
+        // 👇 Agregar esto
+        "autoWidth": false,
+        
+        columnDefs: [
+            { width: "70%", targets: 0, className: 'text-left' },
+            { width: "10%", targets: 1, className: 'text-center' },
+            { width: "10%" , targets: 2, className: 'text-center' },
+            { width: "10%" , targets: 3, className: 'text-center' },
+        ],
+        
+        "ajax": {
+            url: '../../controller/contrato.php?op=listar_archivos',
+            type: "post",
+            data: { contrato_id: contrato_id },
+            dataType: "json",
+            error: function(e) {
+                console.log(e.responseText);
+            }
+        },
+        
+        // 👇 Agregar esto: fuerza recálculo cuando los datos cargan
+        "initComplete": function() {
+            this.api().columns.adjust();
+        },
+        
+        "drawCallback": function() {
+            this.api().columns.adjust();
+        },
+
+        "language": {
+            "processing": '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="sr-only">Cargando...</span></div></div>',
+            "search": "Buscar:",
+            "lengthMenu": "Mostrar _MENU_ registros",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+            "infoEmpty": "Mostrando 0 a 0 de 0 registros",
+            "infoFiltered": "(filtrado de _MAX_ registros totales)",
+            "loadingRecords": "Cargando...",
+            "zeroRecords": '<div class="text-center py-4"><i class="fas fa-inbox fa-3x text-muted mb-3"></i><h5 class="text-muted">No hay datos disponibles</h5><p class="text-muted">No se encontraron registros que mostrar</p></div>',
+            "emptyTable": '<div class="text-center py-4"><h5>No hay archivos asignados</h5><p class="text-muted">Comienza agregando un nuevo archivo</p></div>',
+            "paginate": {
+                "first": '<i class="fas fa-angle-double-left"></i>',
+                "last": '<i class="fas fa-angle-double-right"></i>',
+                "next": '<i class="fas fa-angle-right"></i>',
+                "previous": '<i class="fas fa-angle-left"></i>'
+            }
+        },
+        
+        "dom": '<"row mb-3"<"col-sm-12 col-md-6"><"col-sm-12 col-md-6"<"d-flex justify-content-end"f>>>' +
+               '<"row"<"col-sm-12"tr>>' +
+               '<"row mt-3"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
+    });
+}
+
+// Abrir modal para agregar equipo
+function abrirModalArchivo(contrato_id) {
+    $('#form-contrato-archivo')[0].reset();
+    $('#contrato_id').val(contrato_id);
+    $('#modal_archivo_title').text('Agregar archivo');
+        
+    $('#modal_archivo').modal('show');
+}
+
+function handleFilesModal(files) {
+    $.each(files, function(i, file) {
+
+        const tiposPermitidos = [
+            // Imágenes
+            'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+            'image/webp', 'image/bmp', 'image/svg+xml', 'image/tiff',
+            // PDF
+            'application/pdf',
+            // Word
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            // Excel
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            // PowerPoint
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        ];
+
+        if (!tiposPermitidos.includes(file.type) && !file.type.startsWith('image/')) {
+            getMessage('warning', `Archivo no permitido: ${file.name}`);
+            return;
+        }
+
+        // Tamaño máximo según tipo
+        let tamanoMaximo = 5 * 1024 * 1024; // 5MB default (imágenes)
+
+        if (file.type === 'application/pdf') {
+            tamanoMaximo = 10 * 1024 * 1024; // 10MB
+        } else if (
+            file.type.includes('word') || 
+            file.type.includes('excel') || 
+            file.type.includes('spreadsheet') ||
+            file.type.includes('powerpoint') || 
+            file.type.includes('presentation')
+        ) {
+            tamanoMaximo = 20 * 1024 * 1024; // 20MB
+        }
+
+        if (file.size > tamanoMaximo) {
+            const tamanoMB = Math.round(tamanoMaximo / (1024 * 1024));
+            getMessage('warning', `"${file.name}" debe ser menor a ${tamanoMB}MB`);
+            return;
+        }
+
+        selectedFilesModal.push(file);
+        createPreviewModal(file, selectedFilesModal.length - 1);
+    });
+}
+
+function createPreviewModal(file, index) {
+    const reader = new FileReader();
+
+    // Configuración visual por tipo
+    const tipoConfig = {
+        pdf: {
+            icon: 'bi bi-file-pdf-fill',
+            color: '#dc3545',
+            label: 'PDF'
+        },
+        word: {
+            icon: 'bi bi-file-word-fill',
+            color: '#2b579a',
+            label: 'Word'
+        },
+        excel: {
+            icon: 'bi bi-file-excel-fill',
+            color: '#217346',
+            label: 'Excel'
+        },
+        ppt: {
+            icon: 'bi bi-file-ppt-fill',
+            color: '#d24726',
+            label: 'PowerPoint'
+        }
+    };
+
+    function getTipoConfig(file) {
+        if (file.type === 'application/pdf')                        return tipoConfig.pdf;
+        if (file.type.includes('word'))                             return tipoConfig.word;
+        if (file.type.includes('excel') || file.type.includes('spreadsheet')) return tipoConfig.excel;
+        if (file.type.includes('powerpoint') || file.type.includes('presentation')) return tipoConfig.ppt;
+        return null;
+    }
+
+    function buildFilePreview(config, file, index) {
+        return `
+            <div class="file-preview-doc">
+                <i class="${config.icon}" style="font-size: 40px; color: ${config.color};"></i>
+                <span class="file-label" style="color:${config.color}; font-weight:600; font-size:11px;">${config.label}</span>
+                <span class="file-name">${file.name}</span>
+                <span class="file-size">${formatFileSize(file.size)}</span>
+            </div>
+            <button type="button" class="remove-btn-modal" onclick="removeFileModal(${index})">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        `;
+    }
+
+    reader.onload = function(e) {
+        let previewContent = '';
+
+        if (file.type.startsWith('image/')) {
+            previewContent = `
+                <img src="${e.target.result}" alt="Preview">
+                <button type="button" class="remove-btn-modal" onclick="removeFileModal(${index})">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            `;
+        } else {
+            const config = getTipoConfig(file);
+            if (config) {
+                previewContent = buildFilePreview(config, file, index);
+            }
+        }
+
+        const preview = $('<div>', {
+            class: 'preview-item-modal',
+            'data-index': index,
+            'data-type': file.type,
+            html: previewContent
+        });
+
+        $('#previewContainerModal').append(preview);
+    };
+
+    reader.onerror = function(error) {
+        console.error('Error al leer archivo:', error);
+        getMessage('error', 'Error al cargar el archivo');
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+function removeFileModal(index) {
+    // Eliminar del array
+    selectedFilesModal.splice(index, 1);
+    
+    // Eliminar preview
+    $(`.preview-item-modal[data-index="${index}"]`).remove();
+    
+    // Re-indexar los elementos restantes
+    $('.preview-item-modal').each(function(newIndex) {
+        $(this).attr('data-index', newIndex);
+        $(this).find('.remove-btn-modal').attr('onclick', `removeFileModal(${newIndex})`);
+    });
+}
+
+function cerrarModalArchivo(){
+    $('#modal_archivo').modal('hide');
+    // Limpiar archivos
+    selectedFilesModal = [];
+    $('#previewContainerModal').empty();
+    
+    // NO llamar a .modal('hide') aquí porque ya se llamó antes
+    // Solo limpiar el backdrop si quedó
+    $('.modal-backdrop').remove();
+    $('body').removeClass('modal-open');
+    $('body').css('padding-right', '');
+}
+
+function guardarArchivo() {
+    var formData = new FormData($("#form-contrato-archivo")[0]);
+    let contrato_id = $('#contrato_id').val();
+
+    formData.append('contrato_id', contrato_id);
+    // Agregar imágenes si existen
+    if (selectedFilesModal && selectedFilesModal.length > 0) {
+        selectedFilesModal.forEach(function(file) {
+            formData.append('imagenes[]', file);
+        });
+    }
+
+    $.ajax({
+        url: '../../controller/contrato.php?op=guardar_archivo_contrato',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(response) {
+            if (response && response.success == 1) {                
+                // Mostrar mensaje de éxito
+                getMessage("success", response.message);
+
+                cerrarModalArchivo();
+
+                obtenerArchivosContrato(contrato_id)
+                
+            } else {
+                getMessage("error", response.message || 'Error desconocido');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error:', xhr.responseText);
+            getMessage("error", "Error al procesar la solicitud");
+        }
+    });
+}
+
+function descargarArchivo(ruta) {
+    const baseUrl = window.location.origin + '/Sis_MCCPrinters/';
+    const link = document.createElement('a');
+    link.href = baseUrl + ruta;
+    link.download = ruta.split('/').pop();
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Eliminar archivo
+function eliminarArchivo(contrato_archivo_id) {
+    Swal.fire({
+        text: `¿Deseas eliminar el archivo?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '../../controller/contrato.php?op=eliminar_archivo',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    id: contrato_archivo_id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        obtenerArchivosContrato(contrato_id)
                         getMessage("success", response.message || "Error desconocido");                        
                     } else {
                         getMessage("error", response.message);

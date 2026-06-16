@@ -408,4 +408,258 @@ switch($_GET["op"]){
             echo "<option value=''>No hay equipos disponibles</option>";
         }
         break;
+
+    case "listar_archivos":
+        $contrato_id = $_POST['contrato_id'];
+        $datos = $contrato->obtener_archivos_contrato($contrato_id);
+        $data = array();
+
+        // Mapa de tipos MIME a etiquetas visuales con color
+        $tipos_badge = [
+            // PDF
+            'application/pdf'   => ['label' => 'PDF',   'class' => 'bg-danger'],
+            
+            // Imágenes
+            'image/jpeg'        => ['label' => 'JPG',   'class' => 'bg-success'],
+            'image/jpg'         => ['label' => 'JPG',   'class' => 'bg-success'],
+            'image/png'         => ['label' => 'PNG',   'class' => 'bg-success'],
+            'image/gif'         => ['label' => 'GIF',   'class' => 'bg-success'],
+            'image/webp'        => ['label' => 'WEBP',  'class' => 'bg-success'],
+            'image/bmp'         => ['label' => 'BMP',   'class' => 'bg-success'],
+            'image/svg+xml'     => ['label' => 'SVG',   'class' => 'bg-success'],
+            'image/tiff'        => ['label' => 'TIFF',  'class' => 'bg-success'],
+
+            // Word
+            'application/msword' => ['label' => 'DOC',  'class' => 'bg-info'],
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+                                => ['label' => 'DOCX', 'class' => 'bg-info'],
+
+            // Excel
+            'application/vnd.ms-excel' => ['label' => 'XLS', 'class' => 'bg-success'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                                    => ['label' => 'XLSX', 'class' => 'bg-success'],
+
+            // PowerPoint
+            'application/vnd.ms-powerpoint' => ['label' => 'PPT', 'class' => 'bg-warning'],
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation' 
+                                            => ['label' => 'PPTX', 'class' => 'bg-warning'],
+        ];
+
+        // Mapa de iconos por tipo
+        $tipos_icono = [
+            'application/pdf'    => 'ti ti-file-type-pdf text-danger',
+            'application/msword' => 'ti ti-file-type-doc text-primary',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'ti ti-file-type-doc text-primary',
+            'application/vnd.ms-excel' => 'ti ti-file-type-xls text-success',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'ti ti-file-type-xls text-success',
+            'application/vnd.ms-powerpoint' => 'ti ti-file-type-ppt text-warning',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'ti ti-file-type-ppt text-warning',
+        ];
+
+        foreach ($datos as $row) {
+            $sub_array = array();
+            $tipo = $row['tipo_archivo'];
+
+            // Ícono según tipo (imágenes usan ícono genérico de imagen)
+            if (str_starts_with($tipo, 'image/')) {
+                $icono = 'ti ti-photo text-success';
+            } else {
+                $icono = $tipos_icono[$tipo] ?? 'ti ti-file text-muted';
+            }
+
+            // Columna 1: nombre con ícono dinámico
+            $url_archivo = $row['ruta_archivo'];
+            $sub_array[] = '<a href="../../' . $url_archivo . '" target="_blank" class="fw-bold text-dark text-decoration-none">
+                                <i class="' . $icono . ' me-1"></i>' . htmlspecialchars($row['nombre_archivo']) . '
+                            </a>';
+
+            // Columna 2: badge
+            $badge = isset($tipos_badge[$tipo])
+                        ? $tipos_badge[$tipo]
+                        : ['label' => strtoupper(explode('/', $tipo)[1] ?? $tipo), 'class' => 'bg-secondary'];
+
+            $sub_array[] = '<span class="badge ' . $badge['class'] . '">' . $badge['label'] . '</span>';
+
+            // Columna 3: fecha
+            $sub_array[] = date("d/m/Y", strtotime($row['created_at'])) . '
+                            <span class="text-muted text-sm d-block">' . date("h:i A", strtotime($row['created_at'])) . '</span>';
+
+            // Columna 4: acciones
+            $sub_array[] = '<ul class="list-inline mb-0">
+                                <li class="list-inline-item align-bottom" data-bs-toggle="tooltip" title="Descargar">
+                                    <a class="avtar avtar-xs btn-link-warning btn-pc-default" 
+                                    style="cursor: pointer"
+                                    onclick="descargarArchivo(\'' . $row['ruta_archivo'] . '\')">
+                                        <i class="ti ti-download f-18"></i>
+                                    </a>
+                                </li>
+                                <li class="list-inline-item align-bottom" data-bs-toggle="tooltip" title="Eliminar">
+                                    <a class="avtar avtar-xs btn-link-danger btn-pc-default" 
+                                    style="cursor: pointer"
+                                    onclick="eliminarArchivo(' . $row["contrato_archivo_id"] . ')">
+                                        <i class="ti ti-trash f-18"></i>
+                                    </a>
+                                </li>
+                            </ul>';
+
+            $data[] = $sub_array;
+        }
+
+        $results = array(
+            "draw"            => isset($_POST['draw']) ? intval($_POST['draw']) : 1,
+            "recordsTotal"    => count($data),
+            "recordsFiltered" => count($data),
+            "data"            => $data
+        );
+        echo json_encode($results);
+        break;
+
+    case "eliminar_archivo":
+        try {
+            $id = $_POST['id'];            
+            $resultado = $contrato->eliminar_archivo_contrato($id);
+            
+            if ($resultado) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Archivo eliminado correctamente'
+                ]);
+            } else {
+                throw new Exception('Error al eliminar el equipo');
+            }
+            
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+        break;
+
+    case "guardar_archivo_contrato":
+    
+        $contrato_id = $_POST['contrato_id'];
+        $result = ['success' => 0, 'message' => 'No se procesaron archivos']; // 👈 inicializar siempre
+
+        if (isset($_FILES['imagenes']) && is_array($_FILES['imagenes']['name']) && !empty($_FILES['imagenes']['name'][0])) {
+            
+            $upload_dirs = [
+                'images' => "../assets/contrato/$contrato_id/",
+                'pdfs'   => "../assets/contrato/$contrato_id/",
+                'docs'   => "../assets/contrato/$contrato_id/",
+            ];
+            
+            foreach ($upload_dirs as $dir) {
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0777, true);
+                }
+            }
+            
+            $tipos_permitidos = [
+                // Imágenes
+                'image/jpeg'        => ['dir' => 'images', 'max_size' => 5],
+                'image/jpg'         => ['dir' => 'images', 'max_size' => 5],
+                'image/png'         => ['dir' => 'images', 'max_size' => 5],
+                'image/gif'         => ['dir' => 'images', 'max_size' => 5],
+                'image/webp'        => ['dir' => 'images', 'max_size' => 5],
+                'image/bmp'         => ['dir' => 'images', 'max_size' => 5],
+                // PDF
+                'application/pdf'   => ['dir' => 'pdfs',   'max_size' => 10],
+                // Word
+                'application/msword' => ['dir' => 'docs',  'max_size' => 20],
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => ['dir' => 'docs', 'max_size' => 20],
+                // Excel
+                'application/vnd.ms-excel' => ['dir' => 'docs', 'max_size' => 20],
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => ['dir' => 'docs', 'max_size' => 20],
+                // PowerPoint
+                'application/vnd.ms-powerpoint' => ['dir' => 'docs', 'max_size' => 20],
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation' => ['dir' => 'docs', 'max_size' => 20],
+            ];
+            
+            $archivos_subidos = 0;
+            $archivos_error   = 0;
+            $errores          = [];
+            
+            foreach ($_FILES['imagenes']['tmp_name'] as $key => $tmp_name) {
+                if ($_FILES['imagenes']['error'][$key] == UPLOAD_ERR_OK) {
+                    $tipo_archivo    = $_FILES['imagenes']['type'][$key];
+                    $nombre_original = $_FILES['imagenes']['name'][$key];
+                    $tamanio_archivo = $_FILES['imagenes']['size'][$key];
+                    
+                    $es_tipo_valido = false;
+                    $dir_config     = null;
+
+                    foreach ($tipos_permitidos as $mime => $config) {
+                        if ($tipo_archivo === $mime || strpos($tipo_archivo, explode('/', $mime)[0] . '/') === 0) {
+                            $es_tipo_valido = true;
+                            $dir_config     = $config;
+                            break;
+                        }
+                    }
+                    
+                    if (!$es_tipo_valido) {
+                        $archivos_error++;
+                        $errores[] = "$nombre_original: Tipo de archivo no permitido";
+                        continue;
+                    }
+                    
+                    $max_size_bytes = $dir_config['max_size'] * 1024 * 1024;
+                    if ($tamanio_archivo > $max_size_bytes) {
+                        $archivos_error++;
+                        $errores[] = "$nombre_original: Supera el tamaño máximo de {$dir_config['max_size']}MB";
+                        continue;
+                    }
+                    
+                    $upload_dir = $upload_dirs[$dir_config['dir']];
+                    $extension  = strtolower(pathinfo($nombre_original, PATHINFO_EXTENSION));
+                    $nombre_unico =  pathinfo($nombre_original, PATHINFO_FILENAME) . '_'  . time() . '_' . $key . '.' . $extension;
+                    $ruta_destino  = $upload_dir . $nombre_unico;
+                    
+                    if (move_uploaded_file($tmp_name, $ruta_destino)) {
+                        $ruta_relativa = str_replace('../', '', $upload_dir) . $nombre_unico;
+                        
+                        if ($contrato->insertar_archivo_contrato($contrato_id, $nombre_original, $ruta_relativa, $tipo_archivo)) {
+                            $archivos_subidos++;
+                        } else {
+                            $archivos_error++;
+                            $errores[] = "$nombre_original: Error al guardar en base de datos";
+                        }
+                    } else {
+                        $archivos_error++;
+                        $errores[] = "$nombre_original: Error al subir archivo";
+                    }
+
+                } else {
+                    $archivos_error++;
+                    $errores[] = $_FILES['imagenes']['name'][$key] . ": Error de carga (" . $_FILES['imagenes']['error'][$key] . ")";
+                }
+            }
+            
+            // 👇 Aquí estaba el problema principal: nunca se asignaba success ni message
+            if ($archivos_subidos > 0 && $archivos_error === 0) {
+                $result['success'] = 1;
+                $result['message'] = "$archivos_subidos archivo(s) guardado(s) correctamente";
+            } elseif ($archivos_subidos > 0 && $archivos_error > 0) {
+                $result['success'] = 1; // parcialmente exitoso
+                $result['message'] = "$archivos_subidos archivo(s) guardado(s), $archivos_error con error";
+                $result['errores_detalle'] = $errores;
+            } else {
+                $result['success'] = 0;
+                $result['message'] = "No se pudo guardar ningún archivo";
+                $result['errores_detalle'] = $errores;
+            }
+
+            $result['archivos_subidos'] = $archivos_subidos;
+            $result['archivos_error']   = $archivos_error;
+
+        } else {
+            $result['success'] = 0;
+            $result['message'] = 'No se enviaron archivos';
+        }
+
+        header('Content-type: application/json; charset=utf-8');
+        echo json_encode($result);
+        exit;
+
+        break;
 }

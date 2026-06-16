@@ -24,7 +24,7 @@ class Usuario extends Conectar{
                 email,
                 estado
             FROM mccp_usuario
-            WHERE usuario = ? AND estado = 1";  // ✅ AGREGADO: Validar estado activo
+            WHERE usuario = ? AND estado = 1";
             
             $query_login = $conectar->prepare($query_login);
             $query_login->bindValue(1, $usuario);

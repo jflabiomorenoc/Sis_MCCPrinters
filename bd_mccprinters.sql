@@ -257,6 +257,16 @@ CREATE TABLE mccp_incidencia_foto (
     FOREIGN KEY (comentario_id) REFERENCES mccp_incidencia_comentario(id) ON DELETE CASCADE
 );
 
+CREATE TABLE mccp_contrato_alquiler_archivo (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    contrato_id INT NOT NULL,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    ruta_archivo VARCHAR(500) NOT NULL,
+    tipo_archivo VARCHAR(100) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (contrato_id) REFERENCES mccp_contrato_alquiler(id) ON DELETE CASCADE
+);
+
 --TRIGGERS DE BASE DE DATOS
 
 /*
