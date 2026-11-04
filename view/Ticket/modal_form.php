@@ -28,8 +28,10 @@
                                         name="tipo_incidencia" 
                                         id="tipo_ticket">
                                         <option value="">--Seleccionar--</option>
-                                        <option value="correctivo">CORRECTIVO</option>
-                                        <option value="preventivo">PREVENTIVO</option>
+                                        <option value="correctivo">MANTENIMIENTO CORRECTIVO</option>
+                                        <option value="preventivo">MANTENIMIENTO PREVENTIVO</option>
+                                        <option value="asistencia_preventiva">ASISTENCIA PREVENTIVA</option>
+                                        <option value="recojo_equipos">RECOJO DE EQUIPOS</option>
                                     </select>
                                 </div>
 
@@ -91,6 +93,36 @@
                             <div class="row">
                                 <div class="col-md-12">
                                     <textarea class="form-control form-control-sm" id="descripcion_problema" name="descripcion_problema" rows="3" placeholder="Ingrese observaciones adicionales sobre el ticket..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 5: Datos de finalización (solo al editar un ticket finalizado) -->
+                    <div class="card mb-3" id="card-finalizacion-ticket" style="display: none;">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="ti ti-calendar-time me-2"></i>Datos de finalización</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-12 col-sm-12 mb-3">
+                                    <label for="fecha_atencion" class="form-label">Fecha y hora de finalización <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="fecha_atencion" name="fecha_atencion">
+                                </div>
+
+                                <div class="col-md-12 col-sm-12 mb-3">
+                                    <label for="observaciones" class="form-label">Observaciones <span class="text-danger">*</span></label>
+                                    <textarea class="form-control form-control-sm" id="observaciones" name="observaciones" rows="3" placeholder="Ingrese observaciones sobre el ticket..."></textarea>
+                                </div>
+
+                                <div class="col-md-6 col-sm-12 mb-2 contador-cierre">
+                                    <label for="contador_final_bn" class="form-label">Contador final BN <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control form-control-sm" id="contador_final_bn" name="contador_final_bn" placeholder="Ej: 12345" min="0">
+                                </div>
+
+                                <div class="col-md-6 col-sm-12 mb-2 contador-cierre">
+                                    <label for="contador_final_color" class="form-label">Contador final Color</label>
+                                    <input type="number" class="form-control form-control-sm" id="contador_final_color" name="contador_final_color" placeholder="Ej: 6789" min="0">
                                 </div>
                             </div>
                         </div>

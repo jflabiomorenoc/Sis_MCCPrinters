@@ -53,6 +53,7 @@ include "../MainHeader/header.php";
                                         <thead class="bg-light">
                                             <tr>
                                                 <th class="border-top-0 text-center">N° ticket</th>
+                                                <th class="border-top-0 text-center">Estado</th>
                                                 <th class="border-top-0">Tipo</th>
                                                 <th class="border-top-0">Cliente</th>
                                                 <th class="border-top-0 text-center">N° contrato</th>
@@ -61,7 +62,7 @@ include "../MainHeader/header.php";
                                                 <th class="border-top-0 text-center">Resuelto</th>
                                                 <th class="border-top-0 text-center">Tiempo atención</th>
                                                 <th class="border-top-0 text-center">Tecnico</th>
-                                                <th class="border-top-0 text-center">Estado</th>
+                                                <th class="border-top-0 text-center">Resuelto por</th>
                                                 <th class="border-top-0 text-center">Acciones</th>
                                             </tr>
                                         </thead>

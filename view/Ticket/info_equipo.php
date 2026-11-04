@@ -29,14 +29,18 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="text-muted small">Número de Serie</label>
-                                    <p class="fw-semibold mb-0" id="equipo_numero_serie">-</p>
+                                    <label class="text-muted small">Categoría</label>
+                                    <p class="mb-0">
+                                        <span id="equipo_categoria" class="badge">-</span>
+                                    </p>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="text-muted small">Tipo de Equipo</label>
-                                    <p class="mb-0">
-                                        <span id="equipo_tipo" class="badge">-</span>
-                                    </p>
+                                    <label class="text-muted small">Marca / Modelo</label>
+                                    <p class="fw-semibold mb-0" id="equipo_marca_modelo">-</p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="text-muted small">Número de Serie</label>
+                                    <p class="fw-semibold mb-0" id="equipo_numero_serie">-</p>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="text-muted small">Condición</label>
@@ -47,6 +51,12 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="text-muted small">IP del Equipo</label>
                                     <p class="fw-semibold mb-0" id="equipo_ip">-</p>
+                                </div>
+                                <div class="col-md-6 mb-3" id="col_tipo_impresion">
+                                    <label class="text-muted small">Tipo de Impresión</label>
+                                    <p class="mb-0">
+                                        <span id="equipo_tipo" class="badge">-</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -71,8 +81,8 @@
                         </div>
                     </div>
 
-                    <!-- Card 3: Contadores -->
-                    <div class="card mb-3">
+                    <!-- Card 3: Contadores (solo impresoras) -->
+                    <div class="card mb-3" id="card_contadores_equipo">
                         <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="ti ti-calculator me-2"></i>Contadores</h6>
                         </div>

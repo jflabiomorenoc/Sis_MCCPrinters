@@ -195,9 +195,26 @@ switch($_GET["op"]){
             $sub_array = array();
             
             // Columna 1: Serie
-            $sub_array[] = '<strong>' . $row["numero_serie"] . '</strong>';
+            $sub_array[] = !empty($row["numero_serie"]) ? '<strong>' . $row["numero_serie"] . '</strong>' : '-';
             
-            // Columna 2: Marca/Modelo
+            // Columna 2: Categoría
+            $categorias = [
+                'impresora'  => 'IMPRESORA',
+                'monitor'    => 'MONITOR',
+                'cpu'        => 'CPU',
+                'laptop'     => 'LAPTOP',
+                'accesorios' => 'ACCESORIOS'
+            ];
+            $badge_categoria = [
+                'impresora'  => 'bg-light-primary',
+                'monitor'    => 'bg-light-info',
+                'cpu'        => 'bg-light-success',
+                'laptop'     => 'bg-light-dark',
+                'accesorios' => 'bg-light-warning'
+            ];
+            $sub_array[] = '<span class="badge ' . ($badge_categoria[$row["categoria_equipo"]] ?? 'bg-light-secondary') . ' f-12">' . ($categorias[$row["categoria_equipo"]] ?? '-') . '</span>';
+
+            // Columna 3: Marca/Modelo
             $sub_array[] = $row["marca"] . ' ' . $row["modelo"];
             
             // Columna 3: IP Asignada
@@ -206,19 +223,24 @@ switch($_GET["op"]){
             // Columna 4: Ubicación
             $sub_array[] = !empty($row["area_ubicacion"]) ? $row["area_ubicacion"] : '-';
             
-            // Columna 5: Contador BN
-            $sub_array[] = $row["contador_inicial_bn"];
-            
-            // Columna 6: Contador Color
-            $sub_array[] = $row["contador_inicial_color"];
-            
-            // Columna 7: Estado
+            // Columna 5: Fecha en que se agregó el equipo al contrato
+            $sub_array[] = !empty($row["fecha_agregado"]) ? date('d/m/Y', strtotime($row["fecha_agregado"])) : '-';
+
+            // Columna 6: Mantenimiento preventivo
+            $sub_array[] = ucfirst($row["mantenimiento_preventivo"]);
+
+            // Columnas 7 y 8: Contadores (solo aplican a impresoras)
+            $esImpresora = ($row["categoria_equipo"] === 'impresora');
+            $sub_array[] = $esImpresora ? $row["contador_inicial_bn"] : '-';
+            $sub_array[] = $esImpresora ? $row["contador_inicial_color"] : '-';
+
+            // Columna 9: Estado
             $estadoClass = $row['estado'] === 'vigente' ? 'warning' : 
                         ($row['estado'] === 'finalizado' ? 'success' : 'danger');
             $sub_array[] = '<span class="badge bg-light-' . $estadoClass . ' f-12">' . 
                         strtoupper($row["estado"]) . '</span>';
             
-            // Columna 8: Acciones con permisos y estados
+            // Columna 10: Acciones con permisos y estados
             $estaBloqueado = ($row['estado'] === 'cancelado' || $row['estado'] === 'finalizado');
 
             // Verificar permisos del usuario
@@ -302,7 +324,13 @@ switch($_GET["op"]){
             $equipo_id = $_POST['equipo_id'];
             $ip_equipo = !empty($_POST['ip_equipo']) ? $_POST['ip_equipo'] : null;
             $area_ubicacion = !empty($_POST['area_ubicacion']) ? $_POST['area_ubicacion'] : null;
-            
+
+            // Mantenimiento preventivo (por defecto: ninguno)
+            $frecuencias = ['ninguno', 'mensual', 'bimensual', 'trimestral', 'semestral', 'anual'];
+            $mantenimiento_preventivo = (!empty($_POST['mantenimiento_preventivo']) && in_array($_POST['mantenimiento_preventivo'], $frecuencias, true))
+                ? $_POST['mantenimiento_preventivo']
+                : 'ninguno';
+
             // Normalizar contadores - convertir vacíos a 0
             $contador_inicial_bn    = (!empty($_POST['contador_inicial_bn']) && $_POST['contador_inicial_bn'] !== '') ? intval($_POST['contador_inicial_bn']) : 0;
             $contador_final_bn      = (!empty($_POST['contador_final_bn']) && $_POST['contador_final_bn'] !== '') ? intval($_POST['contador_final_bn']) : 0;
@@ -318,8 +346,9 @@ switch($_GET["op"]){
                     mb_strtoupper($area_ubicacion, 'UTF-8'),
                     $contador_inicial_bn, 
                     $contador_final_bn,
-                    $contador_inicial_color, 
-                    $contador_final_color
+                    $contador_inicial_color,
+                    $contador_final_color,
+                    $mantenimiento_preventivo
                 );
             } else {
                 $resultado = $contrato->insertar_equipo_contrato(
@@ -330,8 +359,9 @@ switch($_GET["op"]){
                     mb_strtoupper($area_ubicacion, 'UTF-8'), 
                     $contador_inicial_bn, 
                     $contador_final_bn,
-                    $contador_inicial_color, 
-                    $contador_final_color
+                    $contador_inicial_color,
+                    $contador_final_color,
+                    $mantenimiento_preventivo
                 );
             }
         } catch (Exception $e) {
@@ -400,8 +430,8 @@ switch($_GET["op"]){
             $html = "<option value=''>-- Seleccionar --</option>";
             foreach($datos as $row){
                 $selected = ($equipo_id_actual && $row['equipo_id'] == $equipo_id_actual) ? 'selected' : '';
-                $equipoInfo = $row['marca']." ".$row['modelo']." - ".$row['numero_serie'];
-                $html .= "<option value='".$row['equipo_id']."' ".$selected.">".$equipoInfo."</option>";
+                $equipoInfo = $row['marca']." ".$row['modelo'].(!empty($row['numero_serie']) ? " - ".$row['numero_serie'] : "");
+                $html .= "<option value='".$row['equipo_id']."' data-categoria='".$row['categoria_equipo']."' data-tipo='".$row['tipo_equipo']."' ".$selected.">".$equipoInfo."</option>";
             }
             echo $html;
         } else {

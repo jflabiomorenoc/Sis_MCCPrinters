@@ -306,14 +306,17 @@ function obtenerEquiposContrato(contrato_id) {
         "ordering": false,
         "iDisplayLength": 10,
         columnDefs: [
-            { width: "12%", targets: 0, className: 'text-left' },    // Serie
-            { width: "15%", targets: 1, className: 'text-center' },  // Marca/Modelo
-            { width: "10%", targets: 2, className: 'text-center' },  // IP
-            { width: "12%", targets: 3, className: 'text-center' },  // Ubicación
-            { width: "10%", targets: 4, className: 'text-center' },  // Contador BN
-            { width: "10%", targets: 5, className: 'text-center' },  // Contador Color
-            { width: "10%", targets: 6, className: 'text-center' },  // Estado
-            { width: "11%", targets: 7, className: 'text-center' }   // Acciones
+            { width: "9%", targets: 0, className: 'text-left' },     // Serie
+            { width: "9%", targets: 1, className: 'text-center' },   // Categoría
+            { width: "13%", targets: 2, className: 'text-center' },  // Marca/Modelo
+            { width: "8%", targets: 3, className: 'text-center' },   // IP
+            { width: "10%", targets: 4, className: 'text-center' },  // Ubicación
+            { width: "9%", targets: 5, className: 'text-center' },   // Fecha agregado
+            { width: "9%", targets: 6, className: 'text-center' },   // Mantenimiento preventivo
+            { width: "7%", targets: 7, className: 'text-center' },   // Contador BN
+            { width: "7%", targets: 8, className: 'text-center' },   // Contador Color
+            { width: "9%", targets: 9, className: 'text-center' },   // Estado
+            { width: "10%", targets: 10, className: 'text-center' }  // Acciones
         ],
         
         "ajax": {
@@ -357,19 +360,26 @@ function abrirModalEquipo(contrato_equipo_id = null) {
     $('#form-contrato-equipo')[0].reset();
     $('#contrato_equipo_id').val('');
     $('#modal_equipo_title').text('Agregar Equipo');
-    
+    $('#mantenimiento_preventivo').val('ninguno');
+    equipo_id_original = null;
+    mostrarContadores(true);
+
     if (contrato_equipo_id) {
         // Modo edición - Obtener datos primero
         $.post("../../controller/contrato.php?op=obtener_equipo", { id: contrato_equipo_id }, function(data) {
             data = JSON.parse(data);
-            
+
             $('#contrato_equipo_id').val(contrato_equipo_id);
-            
-            // Cargar equipos y preseleccionar el actual
-            cargarEquiposDisponibles(data.equipo_id);
-            
+            equipo_id_original = data.equipo_id;
+
+            // Cargar categoría y equipos, preseleccionando el actual
+            $('#categoria_equipo').val(data.categoria_equipo);
+            mostrarContadores(data.categoria_equipo === 'impresora');
+            cargarEquiposDisponibles(data.categoria_equipo, data.equipo_id);
+
             $('#ip_equipo').val(data.ip_equipo);
             $('#area_ubicacion').val(data.area_ubicacion);
+            $('#mantenimiento_preventivo').val(data.mantenimiento_preventivo || 'ninguno');
             $('#contador_inicial_bn').val(data.contador_inicial_bn);
             $('#contador_final_bn').val(data.contador_final_bn);
             $('#contador_inicial_color').val(data.contador_inicial_color);
@@ -381,16 +391,51 @@ function abrirModalEquipo(contrato_equipo_id = null) {
         });
     } else {
         // Modo nuevo
-        cargarEquiposDisponibles();
+        cargarEquiposDisponibles(null);
     }
-    
+
     $('#modal_equipo').modal('show');
 }
 
-// Cargar equipos disponibles
-function cargarEquiposDisponibles(equipo_id_actual = null) {
-    $.post("../../controller/equipo.php?op=combo_equipo", 
-        { equipo_id_actual: equipo_id_actual }, 
+// Equipo asignado originalmente (solo en edición)
+let equipo_id_original = null;
+
+// Mostrar u ocultar los contadores (solo aplican a impresoras)
+function mostrarContadores(mostrar) {
+    $('.contador-campo').toggle(mostrar);
+
+    if (!mostrar) {
+        $('#contador_inicial_bn, #contador_final_bn, #contador_inicial_color, #contador_final_color').val('');
+    }
+}
+
+// Evento cuando cambia la categoría seleccionada
+$('#categoria_equipo').on('change', function() {
+    const categoria = $(this).val();
+
+    mostrarContadores(!categoria || categoria === 'impresora');
+    cargarEquiposDisponibles(categoria || null, equipo_id_original);
+});
+
+// Cargar equipos disponibles de la categoría seleccionada
+function cargarEquiposDisponibles(categoria_equipo, equipo_id_actual = null) {
+    // Sin categoría no se listan equipos
+    if (!categoria_equipo) {
+        if ($('#equipo_id').hasClass("select2-hidden-accessible")) {
+            $('#equipo_id').select2('destroy');
+        }
+
+        $('#equipo_id').html("<option value=''>-- Seleccione primero una categoría --</option>").prop('disabled', true);
+        $('#equipo_id').select2({
+            width: '100%',
+            dropdownParent: $('#modal_equipo')
+        });
+        validarCamposColor(null);
+        return;
+    }
+
+    $.post("../../controller/equipo.php?op=combo_equipo",
+        { equipo_id_actual: equipo_id_actual, categoria_equipo: categoria_equipo },
         function(data) {
             // Destruir Select2 si existe
             if ($('#equipo_id').hasClass("select2-hidden-accessible")) {
@@ -398,8 +443,8 @@ function cargarEquiposDisponibles(equipo_id_actual = null) {
             }
             
             // Cargar opciones HTML
-            $('#equipo_id').html(data);
-            
+            $('#equipo_id').html(data).prop('disabled', false);
+
             // Reinicializar Select2
             $('#equipo_id').select2({
                 placeholder: '-- Seleccionar --',
@@ -422,8 +467,9 @@ function cargarEquiposDisponibles(equipo_id_actual = null) {
 // Evento cuando cambia el equipo seleccionado
 $('#equipo_id').on('change', function() {
     const equipo_id = $(this).val();
-    
-    if (equipo_id) {
+
+    // Solo las impresoras tienen tipo de impresión y contadores
+    if (equipo_id && $('#categoria_equipo').val() === 'impresora') {
         // Obtener información del equipo
         $.post("../../controller/equipo.php?op=obtener", 
             { id: equipo_id }, 
@@ -483,12 +529,16 @@ function guardarEquipo() {
     var formData = new FormData($("#form-contrato-equipo")[0]);
 
     let campos = [
-        "#equipo_id",
+        "#categoria_equipo",
+        "#equipo_id"
         /* "#ip_equipo", */
         /* "#area_ubicacion", */
-        "#contador_inicial_bn",
-        "#contador_final_bn"
     ];
+
+    // Los contadores solo se piden para impresoras
+    if ($('#categoria_equipo').val() === 'impresora') {
+        campos.push("#contador_inicial_bn", "#contador_final_bn");
+    }
 
     // Validación básica de campos requeridos
     for (let i = 0; i < campos.length; i++) {

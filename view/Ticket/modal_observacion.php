@@ -13,6 +13,17 @@
                     <input type="hidden" name="fo_ticket_id" id="fo_ticket_id" value="">
                     <input type="hidden" name="accion_tipo" id="accion_tipo" value="">
             
+                    <!-- Card: Fecha y hora de finalización (solo para finalizar) -->
+                    <div class="card mb-3" id="card-finalizacion" style="display: none;">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="ti ti-calendar-time me-2"></i>Finalización</h6>
+                        </div>
+                        <div class="card-body">
+                            <label for="fecha_finalizacion" class="form-label">Fecha y hora de finalización <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control form-control-sm" id="fecha_finalizacion" name="fecha_finalizacion">
+                        </div>
+                    </div>
+
                     <!-- Card: Observaciones -->
                     <div class="card mb-3">
                         <div class="card-header bg-light">

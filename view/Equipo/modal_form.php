@@ -23,6 +23,21 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-4 col-sm-6 mb-3">
+                                    <label class="form-label">Categoría <span class="text-danger">*</span></label>
+                                    <select class="select2 form-control form-control-sm"
+                                        name="categoria_equipo"
+                                        id="categoria_equipo"
+                                        style="width: 100%;">
+                                        <option value="">--Seleccionar--</option>
+                                        <option value="impresora">IMPRESORA</option>
+                                        <option value="monitor">MONITOR</option>
+                                        <option value="cpu">CPU</option>
+                                        <option value="laptop">LAPTOP</option>
+                                        <option value="accesorios">ACCESORIOS</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 col-sm-6 mb-3">
                                     <label class="form-label">Marca <span class="text-danger">*</span></label>
                                     <input class="form-control form-control-sm" type="text" name="marca" id="marca" placeholder="Ej: HP"/>
                                 </div>
@@ -31,14 +46,14 @@
                                     <label class="form-label">Modelo <span class="text-danger">*</span></label>
                                     <input class="form-control form-control-sm" type="text" name="modelo" id="modelo" placeholder="Ej: LaserJet Pro"/>
                                 </div>
-                            
+
                                 <div class="col-md-4 col-sm-6 mb-3">
-                                    <label class="form-label">N° serie <span class="text-danger">*</span></label>
+                                    <label class="form-label">N° serie</label>
                                     <input class="form-control form-control-sm" type="text" name="numero_serie" id="numero_serie" placeholder="Ej: SN123456"/>
                                 </div>
 
-                                <div class="col-md-4 col-sm-6 mb-3">
-                                    <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                                <div class="col-md-4 col-sm-6 mb-3" id="div_tipo_impresion" style="display: none;">
+                                    <label class="form-label">Tipo de impresión <span class="text-danger">*</span></label>
                                     <select class="select2 form-control form-control-sm" 
                                         name="tipo_equipo" 
                                         id="tipo_equipo"
@@ -115,8 +130,8 @@
                         </div>
                     </div>
 
-                    <!-- Card 3: Contadores -->
-                    <div class="card mb-3">
+                    <!-- Card 3: Contadores (solo para impresoras) -->
+                    <div class="card mb-3" id="card_contadores_impresion" style="display: none;">
                         <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="ti ti-calculator me-2"></i>Contadores de Impresión</h6>
                         </div>

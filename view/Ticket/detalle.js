@@ -3,7 +3,9 @@ let selectedFiles = [];
 let selectedFilesModal = []; 
 let equipo_id;
 let tipo_equipo;
+let categoria_equipo = null;
 let estado;
+let fecha_inicio;
 
 $(document).ready(function () {
 
@@ -134,17 +136,18 @@ function obtenerInfoTicket(ticket_id) {
         $('#lblNumTicket').html(data.numero_ticket);
         $('#lblInicio').html(formatearFecha(data.fecha_incidencia));
         $('#lblContrato').html(data.numero_contrato);
-        $('#lblEquipo').html(data.numero_serie || '-');
+        // Sin número de serie se identifica el equipo por marca y modelo
+        $('#lblEquipo').text(data.numero_serie || ((data.marca || '') + ' ' + (data.modelo || '')).trim() || '-');
         $('#lblCliente').html(data.nombre_cliente);
         $('#lblTecnico').html(data.nombre_tecnico || 'SIN ASIGNAR');
         $('#lblCierre').html(formatearFecha(data.fecha_atencion) || '-');
 
         estado = data.estado;
-        
+        fecha_inicio = data.fecha_incidencia;
+
         // Estilo del estado
         const estadoClass = {
             'pendiente': 'bg-light-secondary',
-            'en_proceso': 'bg-light-warning',
             'resuelto': 'bg-light-success',
             'cancelado': 'bg-light-danger'
         };
@@ -164,6 +167,10 @@ function obtenerInfoTicket(ticket_id) {
 
         if (equipo_id) {
             tipo_equipo = data.tipo_equipo;
+            categoria_equipo = data.categoria_equipo;
+        } else {
+            tipo_equipo = null;
+            categoria_equipo = null;
         }
 
         // Validar estado y mostrar/ocultar botones
@@ -261,9 +268,9 @@ function mostrarComentario(comentario, estadoTicket) {
 
     const puedeEliminar = tienePermiso('Tickets', 'eliminar');
     
-    // Mostrar botón de eliminar solo si puede eliminar Y el ticket no está finalizado/cancelado
+    // Mostrar botón de eliminar solo si puede eliminar Y el ticket no está cancelado (finalizado: solo administrador)
     let botonEliminar = '';
-    if (comentario.puede_eliminar && estadoTicket !== 'cancelado' && estadoTicket !== 'resuelto' && puedeEliminar) {
+    if (comentario.puede_eliminar && estadoTicket !== 'cancelado' && (estadoTicket !== 'resuelto' || esUsuarioAdministrador()) && puedeEliminar) {
         botonEliminar = `
             <button type="button" 
                     class="btn btn-sm btn-outline-danger btn-eliminar-com" 
@@ -379,7 +386,6 @@ function formatearFechaComentario(fecha) {
 
 function validarAccionesSegunEstado(estado) {
     const $btnEditar = $('#btnEditarTicket');
-    const $btnEnProceso = $('#btnEnProcesoTicket');
     const $btnCancelar = $('#btnCancelarTicket');
     const $btnFinalizar = $('#btnFinalizarTicket');
     const $btnNuevo = $('#btnNuevo');
@@ -388,7 +394,6 @@ function validarAccionesSegunEstado(estado) {
     // Ocultar todos los botones por defecto
     $dropdownAccion.hide();
     $btnEditar.hide();
-    $btnEnProceso.hide();
     $btnCancelar.hide();
     $btnFinalizar.hide();
     $btnNuevo.attr('style', 'display: none !important'); // Con !important
@@ -398,6 +403,11 @@ function validarAccionesSegunEstado(estado) {
         $dropdownAccion.hide();
         // Forzar ocultamiento con !important
         $btnNuevo.attr('style', 'display: none !important');
+
+        // Ticket finalizado: el administrador puede seguir agregando comentarios
+        if (estado === 'resuelto' && esUsuarioAdministrador() && tienePermiso('Tickets', 'crear')) {
+            $btnNuevo.removeAttr('style').show();
+        }
         return;
     }
 
@@ -409,8 +419,8 @@ function validarAccionesSegunEstado(estado) {
     let hayAccionesDisponibles = false;
     
     // Mostrar botones según el estado
-    if (estado === 'en_proceso') {
-        
+    if (estado === 'pendiente') {
+
         if (puedeCrear) {
             $btnNuevo.removeAttr('style').show();
         }
@@ -418,13 +428,6 @@ function validarAccionesSegunEstado(estado) {
         if (puedeEditar) {
             $btnCancelar.show();
             $btnFinalizar.show();
-            hayAccionesDisponibles = true;
-        }
-
-    } else if (estado === 'pendiente') {
-        if (puedeEditar) {
-            $btnEnProceso.show();
-            $btnCancelar.show();
             hayAccionesDisponibles = true;
         }
     }
@@ -446,9 +449,10 @@ function cancelarTicket() {
     $('#contador_bn').val('');
     $('#contador_color').val('');
     
-    // Ocultar card de contadores
+    // Ocultar cards de finalización y contadores
+    $('#card-finalizacion').hide();
     $('#card-contadores').hide();
-    
+
     // Cambiar título y texto del modal
     $('#modalTicketLabel').text('Cancelar ticket');
     
@@ -465,9 +469,13 @@ function finalizarTicket() {
     $('#contador_bn').val('');
     $('#contador_color').val('');
     
-    // Mostrar card de contadores
-    $('#card-contadores').show();
-    
+    // Fecha y hora de finalización: actual por defecto, editable
+    $('#fecha_finalizacion').val(obtenerFechaHoraActual());
+
+    // Mostrar card de finalización; los contadores solo aplican a impresoras
+    $('#card-finalizacion').show();
+    $('#card-contadores').toggle(categoria_equipo === 'impresora');
+
     // Cambiar título y texto del modal
     $('#modalTicketLabel').text('Finalizar ticket');
 
@@ -475,6 +483,13 @@ function finalizarTicket() {
     
     // Mostrar modal
     $('#modal_observacion').modal('show');
+}
+
+// Fecha y hora local actual en formato datetime-local (YYYY-MM-DDTHH:mm)
+function obtenerFechaHoraActual() {
+    let ahora = new Date();
+    ahora.setMinutes(ahora.getMinutes() - ahora.getTimezoneOffset());
+    return ahora.toISOString().slice(0, 16);
 }
 
 function validarCamposColor(tipo_equipo) {
@@ -589,6 +604,25 @@ function guardarFinalizar() {
     let ticketId = $('#fo_ticket_id').val();
     let contadorBN = $("#contador_bn").val().trim();
     let contadorColor = $("#contador_color").val().trim();
+    let fechaFinalizacion = $("#fecha_finalizacion").val();
+
+    if (!fechaFinalizacion) {
+        getMessage("warning", "La fecha y hora de finalización es requerida");
+        $("#fecha_finalizacion").focus();
+        return false;
+    }
+
+    if (new Date(fechaFinalizacion) > new Date()) {
+        getMessage("warning", "La fecha de finalización no puede ser futura");
+        $("#fecha_finalizacion").focus();
+        return false;
+    }
+
+    if (fecha_inicio && new Date(fechaFinalizacion) < new Date(fecha_inicio.replace(' ', 'T'))) {
+        getMessage("warning", "La fecha de finalización no puede ser anterior a la fecha de inicio del ticket");
+        $("#fecha_finalizacion").focus();
+        return false;
+    }
 
     if (!observaciones) {
         getMessage("warning", "El campo observaciones es requerido");
@@ -596,13 +630,16 @@ function guardarFinalizar() {
         return false;
     }
 
-    if (!contadorBN) {
+    // Los contadores solo se piden para impresoras
+    let requiereContadores = (categoria_equipo === 'impresora');
+
+    if (requiereContadores && !contadorBN) {
         getMessage("warning", "El contador final BN es requerido");
         $("#contador_bn").focus();
         return false;
     }
 
-    if (!contadorColor && tipo_equipo == 'color') {
+    if (requiereContadores && !contadorColor && tipo_equipo == 'color') {
         getMessage("warning", "El contador final Color es requerido");
         $("#contador_color").focus();
         return false;
@@ -628,10 +665,14 @@ function guardarFinalizar() {
             formData.append('fo_ticket_id', ticketId);
             formData.append('observaciones', observaciones);
             formData.append('accion', 'finalizar');
-            formData.append('contador_bn', contadorBN);
-            
+            formData.append('fecha_finalizacion', fechaFinalizacion);
+
+            if (requiereContadores) {
+                formData.append('contador_bn', contadorBN);
+            }
+
             // Solo enviar contador_color si tiene valor
-            if (contadorColor) {
+            if (requiereContadores && contadorColor) {
                 formData.append('contador_color', contadorColor);
             }
             
@@ -683,6 +724,7 @@ function cerrarModal() {
     $('#observaciones').val('');
     $('#contador_bn').val('');
     $('#contador_color').val('');
+    $('#fecha_finalizacion').val('');
     $('#accion_tipo').val('');
     
     // Limpiar archivos
@@ -1027,42 +1069,4 @@ function resetForm() {
     $('#previewContainer').empty();
     $('#fileInput').val('');
     $('#formComentario button[type="submit"]').prop('disabled', false).html('<i class="bi bi-send"></i> Publicar comentario');
-}
-
-function estadoTicket(pStrEstado){
-    Swal.fire({
-        text: `¿Desea actualizar el estado del ticket?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, actualizar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: '../../controller/ticket.php?op=estado_ticket',
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    ticket_id : ticket_id,
-                    estado       : pStrEstado
-                },
-                success: function(response) {
-                    if (response.success) {
-                        getMessage("success", response.message || "Error desconocido");
-                        
-                        obtenerInfoTicket(ticket_id);
-                        cargarComentarios(ticket_id);
-                        
-                    } else {
-                        getMessage("error", response.message);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    getMessage("error", 'Error al actualizar el estado');
-                }
-            });
-        }
-    });
 }

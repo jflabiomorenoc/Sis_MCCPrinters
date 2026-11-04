@@ -513,9 +513,12 @@ include "../MainHeader/header.php";
                                         <thead class="table-light">
                                             <tr>
                                                 <th>Serie</th>
+                                                <th class="text-center">Categoría</th>
                                                 <th class="text-center">Marca/Modelo</th>
                                                 <th class="text-center">IP Asignada</th>
                                                 <th class="text-center">Ubicación</th>
+                                                <th class="text-center">Fecha agregado</th>
+                                                <th class="text-center">Mant. preventivo</th>
                                                 <th class="text-center">Contador BN (Inicial)</th>
                                                 <th class="text-center">Contador Color (Inicial)</th>
                                                 <th class="text-center">Estado</th>

@@ -11,10 +11,18 @@ class Equipo extends Conectar{
         e.marca,
         e.modelo,
         e.numero_serie,
+        e.categoria_equipo,
+        CASE e.categoria_equipo
+            WHEN 'impresora' THEN 'IMPRESORA'
+            WHEN 'monitor' THEN 'MONITOR'
+            WHEN 'cpu' THEN 'CPU'
+            WHEN 'laptop' THEN 'LAPTOP'
+            WHEN 'accesorios' THEN 'ACCESORIOS'
+        END nombre_categoria,
         e.tipo_equipo,
-        CASE WHEN e.tipo_equipo = 'bn'
-            THEN 'BLANCO/NEGRO'
-            ELSE 'COLOR'
+        CASE e.tipo_equipo
+            WHEN 'bn' THEN 'BLANCO/NEGRO'
+            WHEN 'color' THEN 'COLOR'
         END nombre_tipo,
         e.condicion,
         CASE 
@@ -23,11 +31,16 @@ class Equipo extends Conectar{
         END nombre_condicion,
         e.estado,
         e.proveedor_id,
-        CASE 
-            WHEN p.razon_social IS NOT NULL AND p.razon_social <> '' 
+        CASE
+            WHEN p.razon_social IS NOT NULL AND p.razon_social <> ''
                 THEN p.razon_social
             ELSE CONCAT(p.nombre_proveedor, ' ', p.apellido_paterno, ' ', p.apellido_materno)
-        END AS proveedor
+        END AS proveedor,
+        (
+            SELECT COUNT(*)
+            FROM mccp_equipo_archivo ea
+            WHERE ea.equipo_id = e.id
+        ) total_archivos
         FROM mccp_equipo e
         JOIN mccp_proveedor p ON p.id = e.proveedor_id
         ORDER BY e.numero_serie ASC";
@@ -60,30 +73,31 @@ class Equipo extends Conectar{
         return $resultado['total'] > 0;
     }
 
-    public function insertarEquipo($marca, $modelo, $numero_serie, $tipo_equipo, $condicion, $proveedor_id, $fecha_compra, $costo_dolares, $costo_soles,  $contador_inicial_bn, $contador_actual_bn,  $contador_inicial_color, $contador_actual_color, $estado, $observaciones) {
+    public function insertarEquipo($marca, $modelo, $numero_serie, $categoria_equipo, $tipo_equipo, $condicion, $proveedor_id, $fecha_compra, $costo_dolares, $costo_soles,  $contador_inicial_bn, $contador_actual_bn,  $contador_inicial_color, $contador_actual_color, $estado, $observaciones) {
         $conectar=parent::conexion();
         parent::set_names();
 
         try {
-            $sql = "INSERT INTO mccp_equipo (marca, modelo, numero_serie, tipo_equipo, condicion, proveedor_id, fecha_compra, costo_dolares, costo_soles, contador_inicial_bn, contador_actual_bn, contador_inicial_color, contador_actual_color, estado, observaciones, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+            $sql = "INSERT INTO mccp_equipo (marca, modelo, numero_serie, categoria_equipo, tipo_equipo, condicion, proveedor_id, fecha_compra, costo_dolares, costo_soles, contador_inicial_bn, contador_actual_bn, contador_inicial_color, contador_actual_color, estado, observaciones, created_at, updated_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
 
             $sql = $conectar->prepare($sql);
             $sql->bindValue(1, $marca);
             $sql->bindValue(2, $modelo);
             $sql->bindValue(3, $numero_serie);
-            $sql->bindValue(4, $tipo_equipo);
-            $sql->bindValue(5, $condicion);
-            $sql->bindValue(6, $proveedor_id);
-            $sql->bindValue(7, $fecha_compra);
-            $sql->bindValue(8, $costo_dolares);
-            $sql->bindValue(9, $costo_soles);
-            $sql->bindValue(10, $contador_inicial_bn);
-            $sql->bindValue(11, $contador_actual_bn);
-            $sql->bindValue(12, $contador_inicial_color);
-            $sql->bindValue(13, $contador_actual_color);
-            $sql->bindValue(14, $estado);
-            $sql->bindValue(15, $observaciones);
+            $sql->bindValue(4, $categoria_equipo);
+            $sql->bindValue(5, $tipo_equipo);
+            $sql->bindValue(6, $condicion);
+            $sql->bindValue(7, $proveedor_id);
+            $sql->bindValue(8, $fecha_compra);
+            $sql->bindValue(9, $costo_dolares);
+            $sql->bindValue(10, $costo_soles);
+            $sql->bindValue(11, $contador_inicial_bn);
+            $sql->bindValue(12, $contador_actual_bn);
+            $sql->bindValue(13, $contador_inicial_color);
+            $sql->bindValue(14, $contador_actual_color);
+            $sql->bindValue(15, $estado);
+            $sql->bindValue(16, $observaciones);
 
             if($sql->execute()) {
                 $jsonData['success'] = 1;
@@ -102,7 +116,7 @@ class Equipo extends Conectar{
         echo json_encode($jsonData);   
     }
 
-    public function actualizarEquipo($equipo_id, $marca, $modelo, $numero_serie, $tipo_equipo, $condicion, $proveedor_id, $fecha_compra, $costo_dolares, $costo_soles,  $contador_inicial_bn, $contador_actual_bn,  $contador_inicial_color, $contador_actual_color, $estado, $observaciones) {
+    public function actualizarEquipo($equipo_id, $marca, $modelo, $numero_serie, $categoria_equipo, $tipo_equipo, $condicion, $proveedor_id, $fecha_compra, $costo_dolares, $costo_soles,  $contador_inicial_bn, $contador_actual_bn,  $contador_inicial_color, $contador_actual_color, $estado, $observaciones) {
         $conectar = parent::conexion();
         parent::set_names();
 
@@ -124,6 +138,7 @@ class Equipo extends Conectar{
                     marca = ?, 
                     modelo = ?, 
                     numero_serie = ?,
+                    categoria_equipo = ?,
                     tipo_equipo = ?,
                     condicion = ?,
                     proveedor_id = ?,
@@ -143,19 +158,20 @@ class Equipo extends Conectar{
             $sql_upd->bindValue(1, $marca);
             $sql_upd->bindValue(2, $modelo);
             $sql_upd->bindValue(3, $numero_serie);
-            $sql_upd->bindValue(4, $tipo_equipo);
-            $sql_upd->bindValue(5, $condicion);
-            $sql_upd->bindValue(6, $proveedor_id);
-            $sql_upd->bindValue(7, $fecha_compra);
-            $sql_upd->bindValue(8, $costo_dolares);
-            $sql_upd->bindValue(9, $costo_soles);
-            $sql_upd->bindValue(10, $contador_inicial_bn);
-            $sql_upd->bindValue(11, $contador_actual_bn); 
-            $sql_upd->bindValue(12, $contador_inicial_color); 
-            $sql_upd->bindValue(13, $contador_actual_color);           
-            $sql_upd->bindValue(14, $estado);
-            $sql_upd->bindValue(15, $observaciones); 
-            $sql_upd->bindValue(16, $equipo_id);
+            $sql_upd->bindValue(4, $categoria_equipo);
+            $sql_upd->bindValue(5, $tipo_equipo);
+            $sql_upd->bindValue(6, $condicion);
+            $sql_upd->bindValue(7, $proveedor_id);
+            $sql_upd->bindValue(8, $fecha_compra);
+            $sql_upd->bindValue(9, $costo_dolares);
+            $sql_upd->bindValue(10, $costo_soles);
+            $sql_upd->bindValue(11, $contador_inicial_bn);
+            $sql_upd->bindValue(12, $contador_actual_bn); 
+            $sql_upd->bindValue(13, $contador_inicial_color); 
+            $sql_upd->bindValue(14, $contador_actual_color);           
+            $sql_upd->bindValue(15, $estado);
+            $sql_upd->bindValue(16, $observaciones); 
+            $sql_upd->bindValue(17, $equipo_id);
 
             if($sql_upd->execute()){
                 $jsonData['success'] = 1;
@@ -182,6 +198,7 @@ class Equipo extends Conectar{
 	        mccp_equipo.marca,	
 	        mccp_equipo.modelo,
 	        mccp_equipo.numero_serie,
+	        mccp_equipo.categoria_equipo,
 	        mccp_equipo.tipo_equipo,
 	        mccp_equipo.condicion,
 	        mccp_equipo.estado,
@@ -233,28 +250,112 @@ class Equipo extends Conectar{
         }
     }
 
-    public function combo_equipo($equipo_id_actual = null) {
+    public function combo_equipo($equipo_id_actual = null, $categoria_equipo = null) {
         $conectar = parent::conexion();
         parent::set_names();
-        
-        $sql = "SELECT 
+
+        $sql = "SELECT
                 id,
-                CONCAT(marca, ' ', modelo, ' - ', numero_serie) as nombre
+                CONCAT(marca, ' ', modelo, IFNULL(CONCAT(' - ', numero_serie), '')) as nombre
             FROM mccp_equipo
-            WHERE estado = 'activo'";
+            WHERE (estado = 'activo'";
 
         if ($equipo_id_actual) {
             $sql .= " OR id = ?";  // Incluir el equipo actual aunque esté asignado
         }
 
+        $sql .= ")";
+
+        if ($categoria_equipo) {
+            $sql .= " AND categoria_equipo = ?";
+        }
+
         $sql .= " ORDER BY marca ASC";
         $stmt = $conectar->prepare($sql);
 
+        $i = 1;
         if ($equipo_id_actual) {
-            $stmt->bindValue(1, $equipo_id_actual);
+            $stmt->bindValue($i++, $equipo_id_actual);
         }
-        
+        if ($categoria_equipo) {
+            $stmt->bindValue($i++, $categoria_equipo);
+        }
+
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function obtener_archivos_equipo($equipo_id) {
+        $conectar = parent::conexion();
+        parent::set_names();
+
+        $sql = "SELECT
+            id equipo_archivo_id,
+            nombre_archivo,
+            ruta_archivo,
+            tipo_archivo,
+            created_at
+        FROM mccp_equipo_archivo
+        WHERE equipo_id = ?
+        ORDER BY id DESC";
+        $stmt = $conectar->prepare($sql);
+        $stmt->bindValue(1, $equipo_id);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function insertar_archivo_equipo($equipo_id, $nombre_archivo, $ruta_archivo, $tipo_archivo) {
+        $conectar = parent::conexion();
+        parent::set_names();
+
+        try {
+            $sql = "INSERT INTO mccp_equipo_archivo (equipo_id, nombre_archivo, ruta_archivo, tipo_archivo, created_at)
+                    VALUES (?, ?, ?, ?, NOW())";
+            $stmt = $conectar->prepare($sql);
+            $stmt->bindValue(1, $equipo_id);
+            $stmt->bindValue(2, $nombre_archivo);
+            $stmt->bindValue(3, $ruta_archivo);
+            $stmt->bindValue(4, $tipo_archivo);
+
+            return $stmt->execute();
+
+        } catch (Exception $e) {
+            error_log("Error al insertar el archivo del equipo: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function eliminar_archivo_equipo($equipo_archivo_id) {
+        $conectar = parent::conexion();
+        parent::set_names();
+
+        try {
+            $sql = "SELECT ruta_archivo FROM mccp_equipo_archivo WHERE id = ?";
+            $stmt = $conectar->prepare($sql);
+            $stmt->bindValue(1, $equipo_archivo_id);
+            $stmt->execute();
+            $archivo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$archivo) {
+                return ['success' => false, 'message' => 'Archivo no encontrado'];
+            }
+
+            $sql = "DELETE FROM mccp_equipo_archivo WHERE id = ?";
+            $stmt = $conectar->prepare($sql);
+            $stmt->bindValue(1, $equipo_archivo_id);
+            $stmt->execute();
+
+            // Eliminar el archivo físico una vez eliminado el registro
+            $ruta_fisica = '../' . $archivo['ruta_archivo'];
+            if (file_exists($ruta_fisica)) {
+                unlink($ruta_fisica);
+            }
+
+            return ['success' => true, 'message' => 'Archivo eliminado correctamente'];
+
+        } catch (Exception $e) {
+            error_log("Error al eliminar el archivo del equipo: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error al eliminar el archivo'];
+        }
     }
 }

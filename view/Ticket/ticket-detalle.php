@@ -430,9 +430,6 @@ include "../MainHeader/header.php";
                                             <a class="dropdown-item text-danger" style="cursor: pointer; display:none;" id="btnCancelarTicket" onclick="cancelarTicket()">
                                                 <i class="ti ti-circle-x me-2"></i>Cancelar
                                             </a>
-                                            <a class="dropdown-item text-warning" style="cursor: pointer;" id="btnEnProcesoTicket" onclick="estadoTicket('en_proceso')">
-                                                <i class="ti ti-check me-2"></i>En proceso
-                                            </a>
                                             <a class="dropdown-item text-success" style="cursor: pointer; display:none;" id="btnFinalizarTicket" onclick="finalizarTicket()">
                                                 <i class="ti ti-check me-2"></i>Finalizar
                                             </a>

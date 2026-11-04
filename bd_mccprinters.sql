@@ -153,7 +153,8 @@ CREATE TABLE mccp_equipo (
     id INT AUTO_INCREMENT PRIMARY KEY,
     marca VARCHAR(100) NOT NULL,
     modelo VARCHAR(100) NOT NULL,
-    numero_serie VARCHAR(100) NOT NULL UNIQUE,
+    numero_serie VARCHAR(100) NULL UNIQUE,
+    categoria_equipo ENUM('impresora', 'monitor', 'cpu', 'laptop', 'accesorios') NOT NULL DEFAULT 'impresora',
     tipo_equipo ENUM('bn', 'color') DEFAULT 'bn',
     condicion ENUM('nuevo', 'seminuevo', 'usado') DEFAULT 'nuevo',
     estado ENUM('activo', 'inactivo', 'mantenimiento', 'asignado') DEFAULT 'activo',
@@ -169,6 +170,16 @@ CREATE TABLE mccp_equipo (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (proveedor_id) REFERENCES mccp_proveedor(id)
+);
+
+CREATE TABLE mccp_equipo_archivo (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    equipo_id INT NOT NULL,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    ruta_archivo VARCHAR(500) NOT NULL,
+    tipo_archivo VARCHAR(100) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (equipo_id) REFERENCES mccp_equipo(id) ON DELETE CASCADE
 );
 
 CREATE TABLE mccp_contrato_alquiler (
@@ -193,6 +204,7 @@ CREATE TABLE mccp_contrato_equipo (
     equipo_id INT NOT NULL,
     ip_equipo VARCHAR(15),
     area_ubicacion VARCHAR(100),
+    mantenimiento_preventivo ENUM('ninguno', 'mensual', 'bimensual', 'trimestral', 'semestral', 'anual') NOT NULL DEFAULT 'ninguno',
     contador_inicial_bn INT DEFAULT 0,
     contador_inicial_color INT DEFAULT 0,
     contador_final_bn INT,
@@ -212,7 +224,7 @@ CREATE TABLE mccp_incidencia (
     id INT AUTO_INCREMENT PRIMARY KEY,
     numero_ticket VARCHAR(20) NOT NULL UNIQUE,
     fecha_incidencia DATETIME NOT NULL,
-    tipo_incidencia ENUM('correctivo', 'preventivo') NOT NULL, 
+    tipo_incidencia ENUM('correctivo', 'preventivo', 'asistencia_preventiva', 'recojo_equipos') NOT NULL,
     descripcion_problema TEXT NOT NULL,
     cliente_id INT NOT NULL,
     contrato_id INT,
@@ -225,7 +237,7 @@ CREATE TABLE mccp_incidencia (
     tiempo_atencion DECIMAL(10,2),
     canal_reporte ENUM('whatsapp','llamada','email','presencial') DEFAULT 'whatsapp',
     prioridad ENUM('baja','media','alta','critica') DEFAULT 'media',
-    estado ENUM('pendiente','en_proceso','resuelto','cerrado','cancelado') DEFAULT 'pendiente',
+    estado ENUM('pendiente','resuelto','cancelado') DEFAULT 'pendiente',
     observaciones TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -472,7 +484,7 @@ BEGIN
     SELECT COALESCE(MAX(CAST(SUBSTRING(numero_ticket, -4) AS UNSIGNED)), 0)
     INTO ultimo_numero
     FROM mccp_incidencia
-    WHERE numero_ticket LIKE CONCAT(prefijo, '%');
+    WHERE numero_ticket LIKE CONCAT(prefijo, '%') COLLATE utf8mb4_unicode_ci;
     
     -- Incrementar el número
     SET ultimo_numero = ultimo_numero + 1;

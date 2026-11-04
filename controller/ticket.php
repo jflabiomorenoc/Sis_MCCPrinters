@@ -8,6 +8,7 @@ $ticket = new Ticket();
 // Obtener permisos del usuario para el módulo tickets   
 $perfil = new Perfil();
 $permisos = $perfil->obtenerPermisosModulo($_SESSION['id'], 'Tickets');
+$es_admin = ($_SESSION['rol_usuario'] == 1);
 
 switch($_GET["op"]){
 
@@ -24,10 +25,23 @@ switch($_GET["op"]){
             
             $sub_array[] = '<a style="cursor: pointer; color : black;" class="fw-semibold" href="'.$link.'">' . $row["numero_ticket"] . '</a>';
             
-            if ($row["tipo_incidencia"] == "correctivo") {
-                $sub_array[] = '<span class="badge bg-light-info f-12">CORRECTIVO</span>';
+            // Columna Estado
+            if ($row["estado"] == 'pendiente') {
+                $sub_array[] = '<a><div class="text-secondary f-12"><i class="fas fa-circle f-10 m-r-10"></i>PENDIENTE</div></a>';
+            } else if ($row["estado"] == 'resuelto') {
+                $sub_array[] = '<a><div class="text-success f-12"><i class="fas fa-circle f-10 m-r-10"></i>RESUELTO</div></a>';
             } else {
-                $sub_array[] = '<span class="badge bg-light-warning f-12">PREVENTIVO</span>';
+                $sub_array[] = '<a><div class="text-danger f-12"><i class="fas fa-circle f-10 m-r-10"></i>CANCELADO</div></a>';
+            }
+            
+            if ($row["tipo_incidencia"] == "correctivo") {
+                $sub_array[] = '<span class="badge bg-light-info f-12">MANTENIMIENTO CORRECTIVO</span>';
+            } else if ($row["tipo_incidencia"] == "preventivo") {
+                $sub_array[] = '<span class="badge bg-light-warning f-12">MANTENIMIENTO PREVENTIVO</span>';
+            } else if ($row["tipo_incidencia"] == "asistencia_preventiva") {
+                $sub_array[] = '<span class="badge bg-light-success f-12">ASISTENCIA PREVENTIVA</span>';
+            } else {
+                $sub_array[] = '<span class="badge bg-light-secondary f-12">RECOJO DE EQUIPOS</span>';
             }
 
             $sub_array[] = $row["cliente"];
@@ -35,7 +49,9 @@ switch($_GET["op"]){
             $sub_array[] = '<a style="cursor: pointer" class="fw-semibold" onclick="verContrato(' . $row["contrato_id"] . ')">' . $row["numero_contrato"] . '</a>';
 
             if ($row['equipo_id']) {
-                $sub_array[] = '<a style="cursor: pointer" class="fw-semibold" onclick="verEquipo(' . $row["contrato_equipo_id"] . ')">' . $row["numero_serie"] . '</a>';
+                // Sin número de serie se identifica el equipo por marca y modelo
+                $equipo_texto = !empty($row["numero_serie"]) ? $row["numero_serie"] : trim($row["marca"] . ' ' . $row["modelo"]);
+                $sub_array[] = '<a style="cursor: pointer" class="fw-semibold" onclick="verEquipo(' . $row["contrato_equipo_id"] . ')">' . $equipo_texto . '</a>';
             } else {
                 $sub_array[] = $row["numero_serie"];
             }
@@ -63,18 +79,23 @@ switch($_GET["op"]){
                                 </div>
                             </div>';
 
-            // Columna Estado
-            if ($row["estado"] == 'pendiente') {
-                $sub_array[] = '<a style="cursor: pointer" onclick="estadoTicket(' . $row["id"] . ', 1)"><div class="text-secondary f-12"><i class="fas fa-circle f-10 m-r-10"></i>PENDIENTE</div></a>';
-            } else if ($row["estado"] == 'en_proceso') {
-                $sub_array[] = '<a style="cursor: pointer" onclick="estadoTicket(' . $row["id"] . ', 1)"><div class="text-warning f-12"><i class="fas fa-circle f-10 m-r-10"></i>EN PROCESO</div></a>';
-            } else if ($row["estado"] == 'resuelto') {
-                $sub_array[] = '<a style="cursor: pointer" onclick="estadoTicket(' . $row["id"] . ', 2)"><div class="text-success f-12"><i class="fas fa-circle f-10 m-r-10"></i>RESUELTO</div></a>';
+            if ($row["tecnico_id_fin"] != NULL) {
+                $sub_array[] = '<div class="d-flex align-items-center">
+                                <div class="flex-shrink-0"><img
+                                            src="../../assets/images/user/'. $row["foto_perfil_uf"] . '"
+                                            alt="user image"
+                                            class="img-radius wid-40">
+                                </div>
+                                <div class="flex-grow-1 ms-1">
+                                        <p class="mb-0 fs-6 fw-bold">'. $row["nombres_uf"] . ' ' . $row["apellidos_uf"] .'</p>
+                                </div>
+                            </div>';
             } else {
-                $sub_array[] = '<a style="cursor: pointer" onclick="estadoTicket(' . $row["id"] . ', 3)"><div class="text-danger f-12"><i class="fas fa-circle f-10 m-r-10"></i>CANCELADO</div></a>';
+                $sub_array[] = '-';
             }
             
-            $estaBloqueado = ($row['estado'] === 'cancelado' || $row['estado'] === 'en_proceso' || $row['estado'] === 'resuelto');
+            // Cancelado: no se edita. Finalizado: solo lo edita el administrador
+            $estaBloqueado = ($row['estado'] === 'cancelado' || ($row['estado'] === 'resuelto' && !$es_admin));
             $tooltipVer = 'Ver detalle';
             $tooltipEditar = $estaBloqueado ? 'No disponible' : 'Editar';
             $claseDisabled = $estaBloqueado ? 'disabled pe-none opacity-50' : '';
@@ -102,7 +123,17 @@ switch($_GET["op"]){
                                 </a>
                             </li>';
             }
-            
+
+            // Botón Eliminar (solo administrador, en cualquier estado)
+            if ($es_admin) {
+                $acciones .= '<li class="list-inline-item align-bottom" data-bs-toggle="tooltip" title="Eliminar">
+                                <a style="cursor: pointer;" class="avtar avtar-xs btn-link-danger btn-pc-default"
+                                onclick="eliminarTicket(' . $row["id"] . ')">
+                                    <i class="ti ti-trash f-18"></i>
+                                </a>
+                            </li>';
+            }
+
             $acciones .= '</ul>';
             $sub_array[] = $acciones;            
             
@@ -134,7 +165,7 @@ switch($_GET["op"]){
 
             $descripcion_problema  = !empty($_POST['descripcion_problema']) ? $_POST['descripcion_problema'] : null;
 
-            $fecha_atencion       = !empty($_POST["fecha_atencion"]) ? $_POST["fecha_atencion"] : null;
+            $fecha_atencion       = !empty($_POST["fecha_atencion"]) ? str_replace('T', ' ', $_POST["fecha_atencion"]) . ':00' : null;
             $contador_final_bn    = !empty($_POST["contador_final_bn"]) ? $_POST["contador_final_bn"] : null;
             $contador_final_color = !empty($_POST["contador_final_color"]) ? $_POST["contador_final_color"] : null;
             $observaciones        = !empty($_POST["observaciones"]) ? $_POST["observaciones"] : null;
@@ -189,12 +220,18 @@ switch($_GET["op"]){
                 $output["numero_contrato"]      = $row["numero_contrato"];
                 $output["equipo_id"]            = $row["equipo_id"];
                 $output["contrato_equipo_id"]   = $row["contrato_equipo_id"];
+                $output["categoria_equipo"]     = $row["categoria_equipo"];
                 $output["tipo_equipo"]          = $row["tipo_equipo"];
                 $output["numero_serie"]         = $row["numero_serie"];
+                $output["marca"]                = $row["marca"];
+                $output["modelo"]               = $row["modelo"];
                 $output["fecha_incidencia"]     = $row["fecha_incidencia"];
                 $output["fecha_atencion"]       = $row["fecha_atencion"];
                 $output["estado"]               = $row["estado"];
                 $output["descripcion_problema"] = $row["descripcion_problema"];
+                $output["observaciones"]        = $row["observaciones"];
+                $output["contador_final_bn"]    = $row["contador_final_bn"];
+                $output["contador_final_color"] = $row["contador_final_color"];
             }
             echo json_encode($output);
         }
@@ -294,9 +331,19 @@ switch($_GET["op"]){
             $contador_bn = isset($_POST['contador_bn']) && !empty($_POST['contador_bn']) ? $_POST['contador_bn'] : null;
             $contador_color = isset($_POST['contador_color']) && !empty($_POST['contador_color']) ? $_POST['contador_color'] : null;
             
+            $fecha_finalizacion = !empty($_POST['fecha_finalizacion']) ? str_replace('T', ' ', $_POST['fecha_finalizacion']) . ':00' : null;
+
             // Validaciones específicas para finalizar
             if ($accion === 'finalizar') {
-                if ($contador_bn === null) {
+                // Los contadores solo aplican a impresoras
+                $requiere_contadores = $ticket->ticketRequiereContadores($ticket_id);
+
+                if (!$requiere_contadores) {
+                    $contador_bn = null;
+                    $contador_color = null;
+                }
+
+                if ($requiere_contadores && $contador_bn === null) {
                     header('Content-type: application/json; charset=utf-8');
                     echo json_encode([
                         'success' => 0,
@@ -305,10 +352,28 @@ switch($_GET["op"]){
                     exit;
                 }
                 // contador_color es opcional, no validamos
+
+                if ($fecha_finalizacion === null || strtotime($fecha_finalizacion) === false) {
+                    header('Content-type: application/json; charset=utf-8');
+                    echo json_encode([
+                        'success' => 0,
+                        'message' => 'La fecha y hora de finalización es requerida'
+                    ]);
+                    exit;
+                }
+
+                if (strtotime($fecha_finalizacion) > time()) {
+                    header('Content-type: application/json; charset=utf-8');
+                    echo json_encode([
+                        'success' => 0,
+                        'message' => 'La fecha de finalización no puede ser futura'
+                    ]);
+                    exit;
+                }
             }
-            
+
             // Gestionar el ticket según la acción
-            $result = $ticket->gestionarEstadoTicket($ticket_id, $observaciones, $accion, $contador_bn, $contador_color);
+            $result = $ticket->gestionarEstadoTicket($ticket_id, $observaciones, $accion, $contador_bn, $contador_color, $fecha_finalizacion);
             
             if ($result['success'] == 1) {
                 // Preparar el comentario según el tipo de acción
@@ -316,12 +381,14 @@ switch($_GET["op"]){
                     $comentario = $observaciones;
                     $tipo_comentario = 'accion';
                 } else if ($accion === 'finalizar') {
-                    $comentario = $observaciones . "\n";
-                    $comentario .= "<b>Contador Final BN: </b>" . $contador_bn . "\n";
-                    if ($contador_color !== null) {
-                        $comentario .= "<b>Contador Final Color: </b>" . $contador_color;
-                    } else {
-                        $comentario .= "<b>Contador Final Color: </b> -";
+                    $comentario = $observaciones;
+                    if ($requiere_contadores) {
+                        $comentario .= "\n<b>Contador Final BN: </b>" . $contador_bn . "\n";
+                        if ($contador_color !== null) {
+                            $comentario .= "<b>Contador Final Color: </b>" . $contador_color;
+                        } else {
+                            $comentario .= "<b>Contador Final Color: </b> -";
+                        }
                     }
                     $tipo_comentario = 'accion';
                 }
@@ -462,35 +529,24 @@ switch($_GET["op"]){
         }
         break;
 
-    case "estado_ticket":
-        try {
-
-            $resultado = $ticket->editar_estado_ticket($_POST['ticket_id'], $_POST['estado']);
-            
-            if ($resultado) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Actualización de estado correcto'
-                ]);
-            } else {
-                throw new Exception('Error al actualizar estado');
-            }
-            
-        } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ]);
-        }
-        break;
-
     case "agregar_comentario":
         try {
             $ticket_id = $_POST['ticket_id'];
             $usuario_id = $_SESSION['id'];
             $comentario = $_POST['comentario'];
             $tipo = isset($_POST['tipo']) ? $_POST['tipo'] : 'nota';
-            
+
+            // Cancelado: no admite comentarios. Finalizado: solo el administrador
+            $estado_ticket = $ticket->obtener_estado_ticket($ticket_id);
+            if ($estado_ticket === false || $estado_ticket === 'cancelado' || ($estado_ticket === 'resuelto' && !$es_admin)) {
+                header('Content-type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => 0,
+                    'message' => 'No se pueden agregar comentarios a este ticket'
+                ]);
+                exit;
+            }
+
             // Insertar comentario y obtener respuesta
             $response = $ticket->insertar_comentario($ticket_id, $usuario_id, $comentario, $tipo);
             
@@ -627,9 +683,21 @@ switch($_GET["op"]){
             $ticket_id = intval($_POST['ticket_id']);
             $usuario_id = $_SESSION['id'];
             
-            // Opcional: Validar que el usuario sea el dueño del comentario o tenga permisos
-            // $result = $ticket->validarPropietarioComentario($comentario_id, $usuario_id);
-            
+            // Cancelado: no se eliminan comentarios. Finalizado: solo el administrador y únicamente los suyos
+            $contexto = $ticket->obtener_contexto_comentario($comentario_id);
+            if (!$contexto) {
+                throw new Exception('El comentario no existe');
+            }
+
+            if ($contexto['estado'] === 'cancelado' || ($contexto['estado'] === 'resuelto' && (!$es_admin || $contexto['usuario_id'] != $usuario_id))) {
+                header('Content-type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => 0,
+                    'message' => 'No se puede eliminar este comentario'
+                ]);
+                exit;
+            }
+
             // Eliminar el comentario
             $result = $ticket->eliminarComentario($comentario_id);
             
@@ -639,6 +707,35 @@ switch($_GET["op"]){
             
         } catch (Exception $e) {
             header('Content-type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => 0,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+            exit;
+        }
+        break;
+
+    case "eliminar_ticket":
+        try {
+            header('Content-type: application/json; charset=utf-8');
+
+            if (!$es_admin) {
+                echo json_encode([
+                    'success' => 0,
+                    'message' => 'Solo el administrador puede eliminar tickets'
+                ]);
+                exit;
+            }
+
+            if (empty($_POST['ticket_id'])) {
+                throw new Exception('Datos incompletos');
+            }
+
+            $result = $ticket->eliminarTicket(intval($_POST['ticket_id']));
+            echo json_encode($result);
+            exit;
+
+        } catch (Exception $e) {
             echo json_encode([
                 'success' => 0,
                 'message' => 'Error: ' . $e->getMessage()

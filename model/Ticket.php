@@ -33,20 +33,27 @@ class Ticket extends Conectar{
                     THEN e.numero_serie
                 ELSE '-'
             END numero_serie,
+            e.marca,
+            e.modelo,
             i.contrato_equipo_id,
             i.fecha_incidencia,
             i.fecha_atencion,
             i.tiempo_atencion,
             i.tecnico_id,
+            i.tecnico_id_fin,
             u.nombres,
             u.apellidos,
             u.foto_perfil,
+            uf.nombres as nombres_uf,
+            uf.apellidos as apellidos_uf,
+            uf.foto_perfil as foto_perfil_uf,
             i.estado
             FROM mccp_incidencia i
             JOIN mccp_cliente c ON c.id = i.cliente_id
             JOIN mccp_contrato_alquiler ca ON ca.id = i.contrato_id
             LEFT JOIN mccp_equipo e ON e.id = i.equipo_id
             LEFT JOIN mccp_usuario u ON u.id = i.tecnico_id
+            LEFT JOIN mccp_usuario uf ON uf.id = i.tecnico_id_fin
             WHERE 1=1 {$filtro['sql']}
             ORDER BY i.estado ASC, i.numero_ticket DESC";
 
@@ -64,19 +71,22 @@ class Ticket extends Conectar{
         $conectar=parent::conexion();
         parent::set_names();
 
-        // Calcular el tiempo de atención en horas
-        $sql = "SELECT id
-                FROM mccp_contrato_equipo 
-                WHERE contrato_id = ? AND
-                      equipo_id = ?";
-        $sql = $conectar->prepare($sql);
-        $sql->bindValue(1, $contrato_id);
-        $sql->bindValue(2, $equipo_id);
-        $sql->execute();
-        $contrato = $sql->fetch(PDO::FETCH_ASSOC);
-        
-        // Calcular tiempo total en horas con decimales (ej: 24.50 = 24 horas y 30 minutos)
-        $contrato_equipo_id = $contrato['id'];
+        // El equipo es opcional: sin equipo no hay registro en el contrato
+        $contrato_equipo_id = null;
+
+        if ($equipo_id) {
+            $sql = "SELECT id
+                    FROM mccp_contrato_equipo
+                    WHERE contrato_id = ? AND
+                          equipo_id = ?";
+            $sql = $conectar->prepare($sql);
+            $sql->bindValue(1, $contrato_id);
+            $sql->bindValue(2, $equipo_id);
+            $sql->execute();
+            $contrato = $sql->fetch(PDO::FETCH_ASSOC);
+
+            $contrato_equipo_id = $contrato ? $contrato['id'] : null;
+        }
 
         try {
             $sql = "INSERT INTO mccp_incidencia (tipo_incidencia, cliente_id, contrato_id, equipo_id, contrato_equipo_id, fecha_incidencia, tecnico_id, descripcion_problema, estado, created_at, updated_at) 
@@ -127,6 +137,9 @@ class Ticket extends Conectar{
             i.equipo_id,
             i.contrato_equipo_id,
             e.numero_serie,
+            e.marca,
+            e.modelo,
+            e.categoria_equipo,
             e.tipo_equipo,
             i.tecnico_id,
             CASE
@@ -137,7 +150,10 @@ class Ticket extends Conectar{
             i.fecha_incidencia,
             i.estado,
             i.descripcion_problema,
-            i.fecha_atencion
+            i.fecha_atencion,
+            i.observaciones,
+            i.contador_final_bn,
+            i.contador_final_color
         FROM mccp_incidencia i
         INNER JOIN mccp_contrato_alquiler ca ON ca.id = i.contrato_id
         INNER JOIN mccp_cliente c ON c.id = i.cliente_id
@@ -150,71 +166,285 @@ class Ticket extends Conectar{
         return $resultado=$sql->fetchAll();
     }
 
-    public function actualizarTicket($ticket_id, $tipo_incidencia, $cliente_id, $contrato_id,  $equipo_id, $fecha_incidencia, $tecnico_id, $descripcion_problema, $fecha_atencion, $contador_final_bn, $contador_final_color, $observaciones){
+    public function actualizarTicket($ticket_id, $tipo_incidencia, $cliente_id, $contrato_id,  $equipo_id, $fecha_incidencia, $tecnico_id, $descripcion_problema, $fecha_atencion = null, $contador_final_bn = null, $contador_final_color = null, $observaciones = null){
         $conectar = parent::conexion();
         parent::set_names();
 
-        // Calcular el tiempo de atención en horas
-        $sql = "SELECT id
-                FROM mccp_contrato_equipo 
-                WHERE contrato_id = ? AND
-                      equipo_id = ?";
-        $sql = $conectar->prepare($sql);
-        $sql->bindValue(1, $contrato_id);
-        $sql->bindValue(2, $equipo_id);
-        $sql->execute();
-        $contrato = $sql->fetch(PDO::FETCH_ASSOC);
-        
-        // Calcular tiempo total en horas con decimales (ej: 24.50 = 24 horas y 30 minutos)
-        $contrato_equipo_id = $contrato['id'];
-
         try {
+            // Estado y datos de cierre actuales del ticket
+            $sql_actual = "SELECT estado, fecha_atencion, contador_final_bn, contador_final_color, observaciones
+                           FROM mccp_incidencia
+                           WHERE id = ?";
+            $stmt_actual = $conectar->prepare($sql_actual);
+            $stmt_actual->bindValue(1, $ticket_id);
+            $stmt_actual->execute();
+            $actual = $stmt_actual->fetch(PDO::FETCH_ASSOC);
+
+            if (!$actual) {
+                return $this->responderJson(0, 'El ticket no existe');
+            }
+
+            if ($actual['estado'] === 'cancelado') {
+                return $this->responderJson(0, 'Un ticket cancelado no se puede editar');
+            }
+
+            $es_resuelto = ($actual['estado'] === 'resuelto');
+
+            if ($es_resuelto && $_SESSION['rol_usuario'] != 1) {
+                return $this->responderJson(0, 'Solo el administrador puede editar un ticket finalizado');
+            }
+
+            // Los contadores solo aplican a impresoras
+            $requiere_contadores = $this->equipoEsImpresora($equipo_id);
+
+            if (!$requiere_contadores) {
+                $contador_final_bn = null;
+                $contador_final_color = null;
+            }
+
+            // Validaciones de los datos de cierre (solo ticket finalizado)
+            if ($es_resuelto) {
+                $inicio_ts = strtotime($fecha_incidencia);
+                $fin_ts = $fecha_atencion ? strtotime($fecha_atencion) : false;
+
+                if ($fin_ts === false) {
+                    return $this->responderJson(0, 'La fecha y hora de finalización es requerida');
+                }
+
+                if ($fin_ts > time()) {
+                    return $this->responderJson(0, 'La fecha de finalización no puede ser futura');
+                }
+
+                if ($inicio_ts !== false && $fin_ts < $inicio_ts) {
+                    return $this->responderJson(0, 'La fecha de finalización no puede ser anterior a la fecha de inicio del ticket');
+                }
+
+                if (empty($observaciones)) {
+                    return $this->responderJson(0, 'El campo observaciones es requerido');
+                }
+
+                if ($requiere_contadores && $contador_final_bn === null) {
+                    return $this->responderJson(0, 'El contador final BN es requerido');
+                }
+            }
+
+            $sql = "SELECT id
+                    FROM mccp_contrato_equipo
+                    WHERE contrato_id = ? AND
+                          equipo_id = ?";
+            $sql = $conectar->prepare($sql);
+            $sql->bindValue(1, $contrato_id);
+            $sql->bindValue(2, $equipo_id);
+            $sql->execute();
+            $contrato = $sql->fetch(PDO::FETCH_ASSOC);
+
+            $contrato_equipo_id = $contrato ? $contrato['id'] : null;
+
             $sql_upd = "UPDATE mccp_incidencia SET
-                    tipo_incidencia = ?, 
-                    cliente_id = ?, 
+                    tipo_incidencia = ?,
+                    cliente_id = ?,
                     contrato_id = ?,
                     equipo_id = ?,
                     contrato_equipo_id = ?,
                     fecha_incidencia = ?,
                     tecnico_id = ?,
                     descripcion_problema = ?,
-                    fecha_atencion = ?,
-                    contador_final_bn = ?,
-                    contador_final_color = ?,
-                    observaciones = ?,
-                    updated_at = NOW()
-                    WHERE id = ?";
+                    updated_at = NOW()";
+
+            $params = [
+                $tipo_incidencia,
+                $cliente_id,
+                $contrato_id,
+                $equipo_id,
+                $contrato_equipo_id,
+                $fecha_incidencia,
+                $tecnico_id,
+                $descripcion_problema
+            ];
+
+            // Ticket finalizado: actualizar también los datos de cierre y el tiempo de atención
+            if ($es_resuelto) {
+                // Tiempo total en horas con decimales (ej: 24.50 = 24 horas y 30 minutos)
+                $segundos = $fin_ts - $inicio_ts;
+                $tiempo_atencion = round(floor($segundos / 3600) + (floor(($segundos % 3600) / 60) / 60), 2);
+
+                $sql_upd .= ", fecha_atencion = ?, contador_final_bn = ?, contador_final_color = ?, observaciones = ?, tiempo_atencion = ?";
+                $params[] = date('Y-m-d H:i:s', $fin_ts);
+                $params[] = $contador_final_bn;
+                $params[] = $contador_final_color;
+                $params[] = $observaciones;
+                $params[] = $tiempo_atencion;
+            }
+
+            $sql_upd .= " WHERE id = ?";
+            $params[] = $ticket_id;
 
             $sql_upd = $conectar->prepare($sql_upd);
-            $sql_upd->bindValue(1, $tipo_incidencia);
-            $sql_upd->bindValue(2, $cliente_id);
-            $sql_upd->bindValue(3, $contrato_id);
-            $sql_upd->bindValue(4, $equipo_id);
-            $sql_upd->bindValue(5, $contrato_equipo_id);
-            $sql_upd->bindValue(6, $fecha_incidencia);
-            $sql_upd->bindValue(7, $tecnico_id);
-            $sql_upd->bindValue(8, $descripcion_problema);
-            $sql_upd->bindValue(9, $fecha_atencion);
-            $sql_upd->bindValue(10, $contador_final_bn);
-            $sql_upd->bindValue(11, $contador_final_color);
-            $sql_upd->bindValue(12, $observaciones);
-            $sql_upd->bindValue(13, $ticket_id);
 
-            if($sql_upd->execute()){
-                $jsonData['success'] = 1;
-                $jsonData['message'] = 'Ticket actualizado correctamente';
-            } else {
-                $jsonData['success'] = 0;
-                $jsonData['message'] = 'Error al actualizar ticket';
+            foreach ($params as $index => $value) {
+                $sql_upd->bindValue($index + 1, $value);
             }
-            
+
+            if ($sql_upd->execute()) {
+                // Dejar constancia en el historial si cambió algún dato de cierre
+                if ($es_resuelto) {
+                    $this->registrarModificacionCierre($ticket_id, $actual, date('Y-m-d H:i:s', $fin_ts), $contador_final_bn, $contador_final_color, $observaciones);
+                }
+
+                return $this->responderJson(1, 'Ticket actualizado correctamente');
+            }
+
+            return $this->responderJson(0, 'Error al actualizar ticket');
+
         } catch (Exception $e) {
-            $jsonData['success'] = 0;
-            $jsonData['message'] = 'Error: ' . $e->getMessage();
+            return $this->responderJson(0, 'Error: ' . $e->getMessage());
         }
-        
+    }
+
+    // Indica si el equipo es una impresora (únicas con contadores)
+    private function equipoEsImpresora($equipo_id) {
+        if (empty($equipo_id)) {
+            return false;
+        }
+
+        $conectar = parent::conexion();
+        parent::set_names();
+
+        $stmt = $conectar->prepare("SELECT categoria_equipo FROM mccp_equipo WHERE id = ?");
+        $stmt->bindValue(1, $equipo_id);
+        $stmt->execute();
+
+        return $stmt->fetchColumn() === 'impresora';
+    }
+
+    // Indica si el equipo del ticket es una impresora (requiere contadores al finalizar)
+    public function ticketRequiereContadores($ticket_id) {
+        $conectar = parent::conexion();
+        parent::set_names();
+
+        $stmt = $conectar->prepare("SELECT equipo_id FROM mccp_incidencia WHERE id = ?");
+        $stmt->bindValue(1, $ticket_id);
+        $stmt->execute();
+
+        return $this->equipoEsImpresora($stmt->fetchColumn());
+    }
+
+    private function responderJson($success, $message) {
+        $jsonData['success'] = $success;
+        $jsonData['message'] = $message;
+
         header('Content-type: application/json; charset=utf-8');
         echo json_encode($jsonData);
+    }
+
+    // Inserta un comentario con los datos de cierre que cambiaron al editar un ticket finalizado
+    private function registrarModificacionCierre($ticket_id, $actual, $fecha_atencion, $contador_bn, $contador_color, $observaciones) {
+        $cambios = [];
+
+        if (strtotime($actual['fecha_atencion']) !== strtotime($fecha_atencion)) {
+            $cambios[] = "<b>Fecha de finalización: </b>" . date('d/m/Y h:i A', strtotime($actual['fecha_atencion'])) . " → " . date('d/m/Y h:i A', strtotime($fecha_atencion));
+        }
+
+        if ((string) $actual['contador_final_bn'] !== (string) $contador_bn) {
+            $cambios[] = "<b>Contador Final BN: </b>" . ($actual['contador_final_bn'] ?? '-') . " → " . ($contador_bn ?? '-');
+        }
+
+        if ((string) $actual['contador_final_color'] !== (string) $contador_color) {
+            $cambios[] = "<b>Contador Final Color: </b>" . ($actual['contador_final_color'] ?? '-') . " → " . ($contador_color ?? '-');
+        }
+
+        if ((string) $actual['observaciones'] !== (string) $observaciones) {
+            $cambios[] = "<b>Observaciones actualizadas: </b>" . htmlspecialchars($observaciones, ENT_QUOTES, 'UTF-8');
+        }
+
+        if (empty($cambios)) {
+            return;
+        }
+
+        $comentario = "<b>Ticket modificado por el administrador</b>\n" . implode("\n", $cambios);
+        $this->insertar_comentario($ticket_id, $_SESSION['id'], $comentario, 'accion');
+    }
+
+    public function obtener_estado_ticket($ticket_id) {
+        $conectar = parent::conexion();
+        parent::set_names();
+
+        $sql = "SELECT estado FROM mccp_incidencia WHERE id = ?";
+        $sql = $conectar->prepare($sql);
+        $sql->bindValue(1, $ticket_id);
+        $sql->execute();
+        return $sql->fetchColumn();
+    }
+
+    // Estado del ticket y autor de un comentario
+    public function obtener_contexto_comentario($comentario_id) {
+        $conectar = parent::conexion();
+        parent::set_names();
+
+        $sql = "SELECT c.usuario_id, i.estado
+                FROM mccp_incidencia_comentario c
+                INNER JOIN mccp_incidencia i ON i.id = c.incidencia_id
+                WHERE c.id = ?";
+        $sql = $conectar->prepare($sql);
+        $sql->bindValue(1, $comentario_id);
+        $sql->execute();
+        return $sql->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function eliminarTicket($ticket_id) {
+        $conectar = parent::conexion();
+        parent::set_names();
+
+        try {
+            $conectar->beginTransaction();
+
+            // Archivos adjuntos de todos los comentarios del ticket
+            $sql_fotos = "SELECT f.ruta_archivo
+                          FROM mccp_incidencia_foto f
+                          INNER JOIN mccp_incidencia_comentario c ON c.id = f.comentario_id
+                          WHERE c.incidencia_id = ?";
+            $stmt_fotos = $conectar->prepare($sql_fotos);
+            $stmt_fotos->bindValue(1, $ticket_id);
+            $stmt_fotos->execute();
+            $fotos = $stmt_fotos->fetchAll(PDO::FETCH_ASSOC);
+
+            // Los comentarios y sus fotos se eliminan en cascada
+            $sql_del = "DELETE FROM mccp_incidencia WHERE id = ?";
+            $stmt_del = $conectar->prepare($sql_del);
+            $stmt_del->bindValue(1, $ticket_id);
+
+            if ($stmt_del->execute() && $stmt_del->rowCount() > 0) {
+                $conectar->commit();
+
+                // Eliminar archivos físicos una vez confirmada la eliminación en base de datos
+                foreach ($fotos as $foto) {
+                    $ruta_completa = '../' . $foto['ruta_archivo'];
+                    if (file_exists($ruta_completa)) {
+                        unlink($ruta_completa);
+                    }
+                }
+
+                return array(
+                    'success' => 1,
+                    'message' => 'Ticket eliminado correctamente'
+                );
+            }
+
+            $conectar->rollBack();
+            return array(
+                'success' => 0,
+                'message' => 'No se pudo eliminar el ticket o no existe'
+            );
+
+        } catch (Exception $e) {
+            if ($conectar->inTransaction()) {
+                $conectar->rollBack();
+            }
+            return array(
+                'success' => 0,
+                'message' => 'Error: ' . $e->getMessage()
+            );
+        }
     }
 
     public function obtener_info_equipo($contrato_equipo_id) {
@@ -230,6 +460,9 @@ class Ticket extends Conectar{
             ce.contador_inicial_bn,
             ce.contador_inicial_color,
             e.numero_serie,
+            e.marca,
+            e.modelo,
+            e.categoria_equipo,
             e.tipo_equipo,
             e.condicion,
             CONCAT(
@@ -280,7 +513,7 @@ class Ticket extends Conectar{
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function gestionarEstadoTicket($ticket_id, $observaciones, $accion, $contador_bn = null, $contador_color = null) {
+    public function gestionarEstadoTicket($ticket_id, $observaciones, $accion, $contador_bn = null, $contador_color = null, $fecha_finalizacion = null) {
         $conectar = parent::conexion(); 
         parent::set_names();
         
@@ -306,31 +539,58 @@ class Ticket extends Conectar{
             
             // Si es finalizar, agregar los contadores, fecha y tiempo de atención
             if ($accion === 'finalizar') {
+                // Los contadores solo aplican a impresoras
+                $requiere_contadores = $this->ticketRequiereContadores($ticket_id);
+
+                if (!$requiere_contadores) {
+                    $contador_bn = null;
+                    $contador_color = null;
+                }
+
                 // Validar que el contador BN esté presente
-                if ($contador_bn === null) {
+                if ($requiere_contadores && $contador_bn === null) {
                     return array(
                         'success' => 0,
                         'message' => 'El contador BN es requerido para finalizar'
                     );
                 }
                 
+                // Validar que la fecha de finalización esté presente
+                if ($fecha_finalizacion === null) {
+                    return array(
+                        'success' => 0,
+                        'message' => 'La fecha y hora de finalización es requerida'
+                    );
+                }
+
                 // Calcular el tiempo de atención en horas
-                $sql_tiempo = "SELECT 
-                                TIMESTAMPDIFF(HOUR, fecha_incidencia, NOW()) as horas_enteras,
-                                TIMESTAMPDIFF(MINUTE, fecha_incidencia, NOW()) % 60 as minutos_restantes
-                            FROM mccp_incidencia 
+                $sql_tiempo = "SELECT
+                                TIMESTAMPDIFF(HOUR, fecha_incidencia, ?) as horas_enteras,
+                                TIMESTAMPDIFF(MINUTE, fecha_incidencia, ?) % 60 as minutos_restantes
+                            FROM mccp_incidencia
                             WHERE id = ?";
                 $stmt_tiempo = $conectar->prepare($sql_tiempo);
-                $stmt_tiempo->bindValue(1, $ticket_id);
+                $stmt_tiempo->bindValue(1, $fecha_finalizacion);
+                $stmt_tiempo->bindValue(2, $fecha_finalizacion);
+                $stmt_tiempo->bindValue(3, $ticket_id);
                 $stmt_tiempo->execute();
                 $tiempo_data = $stmt_tiempo->fetch(PDO::FETCH_ASSOC);
-                
+
+                // La fecha de finalización no puede ser anterior al inicio del ticket
+                if ($tiempo_data['horas_enteras'] < 0 || $tiempo_data['minutos_restantes'] < 0) {
+                    return array(
+                        'success' => 0,
+                        'message' => 'La fecha de finalización no puede ser anterior a la fecha de inicio del ticket'
+                    );
+                }
+
                 // Calcular tiempo total en horas con decimales (ej: 24.50 = 24 horas y 30 minutos)
                 $tiempo_atencion = $tiempo_data['horas_enteras'] + ($tiempo_data['minutos_restantes'] / 60);
                 
-                $sql_upd .= ", contador_final_bn = ?, contador_final_color = ?, fecha_atencion = NOW(), tiempo_atencion = ?";
+                $sql_upd .= ", tecnico_id_fin = " . $_SESSION['id'] . ", contador_final_bn = ?, contador_final_color = ?, fecha_atencion = ?, tiempo_atencion = ?";
                 $params[] = $contador_bn;
                 $params[] = $contador_color;
+                $params[] = $fecha_finalizacion;
                 $params[] = round($tiempo_atencion, 2); // Redondear a 2 decimales
             }
             
@@ -508,29 +768,6 @@ class Ticket extends Conectar{
     // Mantener la función antigua para compatibilidad (si es necesario)
     public function insertar_foto_comentario($comentario_id, $nombre_archivo, $ruta_archivo) {
         return $this->insertar_archivo_comentario($comentario_id, $nombre_archivo, $ruta_archivo, 'image/jpeg');
-    }
-
-    public function editar_estado_ticket($ticket_id, $estado) {
-        $conectar = parent::conexion();
-        parent::set_names();
-        
-        try {
-            $conectar->beginTransaction();
-            
-            $sql_upd = "UPDATE mccp_incidencia SET estado = ?, updated_at = NOW() WHERE id = ?";
-            $sql_upd = $conectar->prepare($sql_upd);
-            $sql_upd->bindValue(1, $estado);
-            $sql_upd->bindValue(2, $ticket_id);
-            $sql_upd->execute();
-            
-            $conectar->commit();
-            return true;
-            
-        } catch (Exception $e) {
-            $conectar->rollBack();
-            error_log("Error al actualizar estado: " . $e->getMessage());
-            return false;
-        }
     }
 
     public function eliminarComentario($comentario_id) {

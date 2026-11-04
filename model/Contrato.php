@@ -179,6 +179,8 @@ class Contrato extends Conectar{
             ce.equipo_id,
             ce.ip_equipo,
             ce.area_ubicacion,
+            ce.mantenimiento_preventivo,
+            ce.created_at as fecha_agregado,
             ce.contador_inicial_bn,
             ce.contador_inicial_color,
             ce.contador_final_bn,
@@ -187,6 +189,7 @@ class Contrato extends Conectar{
             eq.marca,
             eq.modelo,
             eq.numero_serie,
+            eq.categoria_equipo,
             eq.tipo_equipo
         FROM mccp_contrato_equipo ce
         INNER JOIN mccp_equipo eq ON ce.equipo_id = eq.id
@@ -201,14 +204,14 @@ class Contrato extends Conectar{
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function insertar_equipo_contrato($contrato_id, $direccion_id, $equipo_id, $ip_equipo, $area_ubicacion, $contador_inicial_bn, $contador_final_bn, $contador_inicial_color, $contador_final_color) {
+    public function insertar_equipo_contrato($contrato_id, $direccion_id, $equipo_id, $ip_equipo, $area_ubicacion, $contador_inicial_bn, $contador_final_bn, $contador_inicial_color, $contador_final_color, $mantenimiento_preventivo = 'ninguno') {
         $conectar = parent::conexion();
         parent::set_names();
-        
+
         try {
-            $sql = "INSERT INTO mccp_contrato_equipo 
-                    (contrato_id, direccion_id, equipo_id, ip_equipo, area_ubicacion, contador_inicial_bn, contador_final_bn, contador_inicial_color, contador_final_color, fecha_inicio, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())";
+            $sql = "INSERT INTO mccp_contrato_equipo
+                    (contrato_id, direccion_id, equipo_id, ip_equipo, area_ubicacion, contador_inicial_bn, contador_final_bn, contador_inicial_color, contador_final_color, mantenimiento_preventivo, fecha_inicio, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())";
             
             $stmt = $conectar->prepare($sql);
             $stmt->bindValue(1, $contrato_id);
@@ -220,7 +223,8 @@ class Contrato extends Conectar{
             $stmt->bindValue(7, $contador_final_bn);
             $stmt->bindValue(8, $contador_inicial_color);
             $stmt->bindValue(9, $contador_final_color);
-            
+            $stmt->bindValue(10, $mantenimiento_preventivo);
+
             if($stmt->execute()) {
                 $jsonData['success'] = 1;
                 $jsonData['message'] = 'Equipo agregado correctamente';
@@ -238,12 +242,12 @@ class Contrato extends Conectar{
         echo json_encode($jsonData);   
     }
 
-    public function actualizar_equipo_contrato($contrato_equipo_id, $direccion_id, $equipo_id, $ip_equipo, $area_ubicacion, $contador_inicial_bn, $contador_final_bn, $contador_inicial_color, $contador_final_color) {
+    public function actualizar_equipo_contrato($contrato_equipo_id, $direccion_id, $equipo_id, $ip_equipo, $area_ubicacion, $contador_inicial_bn, $contador_final_bn, $contador_inicial_color, $contador_final_color, $mantenimiento_preventivo = 'ninguno') {
         $conectar = parent::conexion();
         parent::set_names();
-        
+
         try {
-            $sql = "UPDATE mccp_contrato_equipo 
+            $sql = "UPDATE mccp_contrato_equipo
                     SET direccion_id = ?,
                         equipo_id = ?, 
                         ip_equipo = ?, 
@@ -252,6 +256,7 @@ class Contrato extends Conectar{
                         contador_final_bn = ?, 
                         contador_inicial_color = ?,
                         contador_final_color = ?,
+                        mantenimiento_preventivo = ?,
                         updated_at = NOW()
                     WHERE id = ?";
             
@@ -264,7 +269,8 @@ class Contrato extends Conectar{
             $stmt->bindValue(6, $contador_final_bn);
             $stmt->bindValue(7, $contador_inicial_color);
             $stmt->bindValue(8, $contador_final_color);
-            $stmt->bindValue(9, $contrato_equipo_id);
+            $stmt->bindValue(9, $mantenimiento_preventivo);
+            $stmt->bindValue(10, $contrato_equipo_id);
             
             if($stmt->execute()){
                 $jsonData['success'] = 1;
@@ -292,12 +298,14 @@ class Contrato extends Conectar{
         mccp_contrato_equipo.direccion_id,
         mccp_contrato_equipo.ip_equipo,
         mccp_contrato_equipo.area_ubicacion,
+        mccp_contrato_equipo.mantenimiento_preventivo,
+        mccp_equipo.categoria_equipo,
         mccp_contrato_equipo.contador_inicial_bn,
         mccp_contrato_equipo.contador_inicial_color,
         mccp_contrato_equipo.contador_final_bn,
         mccp_contrato_equipo.contador_final_color,
         mccp_contrato_equipo.equipo_id,
-        CONCAT(mccp_equipo.marca, ' ', mccp_equipo.modelo, ' - ', mccp_equipo.numero_serie) as nombre_equipo       
+        CONCAT(mccp_equipo.marca, ' ', mccp_equipo.modelo, IFNULL(CONCAT(' - ', mccp_equipo.numero_serie), '')) as nombre_equipo       
         FROM mccp_contrato_equipo 
         INNER JOIN mccp_equipo ON mccp_equipo.id = mccp_contrato_equipo.equipo_id
         INNER JOIN mccp_contrato_alquiler ON mccp_contrato_alquiler.id = mccp_contrato_equipo.contrato_id
@@ -370,6 +378,8 @@ class Contrato extends Conectar{
                     e.marca,
                     e.modelo,
                     e.numero_serie,
+                    e.categoria_equipo,
+                    e.tipo_equipo,
                     ce.ip_equipo,
                     ce.area_ubicacion
                 FROM mccp_contrato_equipo ce

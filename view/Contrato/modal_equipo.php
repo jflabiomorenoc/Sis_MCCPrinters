@@ -22,6 +22,20 @@
                     
                     <div class="row">
                         <div class="col-md-12 mb-3">
+                            <label class="form-label">Categoría <span class="text-danger">*</span></label>
+                            <select class="form-control form-control-sm"
+                                    name="categoria_equipo"
+                                    id="categoria_equipo">
+                                <option value="">-- Seleccionar Categoría --</option>
+                                <option value="impresora">IMPRESORA</option>
+                                <option value="monitor">MONITOR</option>
+                                <option value="cpu">CPU</option>
+                                <option value="laptop">LAPTOP</option>
+                                <option value="accesorios">ACCESORIOS</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-12 mb-3">
                             <label class="form-label">Equipo <span class="text-danger">*</span></label>
                             <select class="form-control form-control-sm select2-equipo" 
                                     name="equipo_id" 
@@ -41,23 +55,35 @@
                             <input class="form-control form-control-sm" type="text" name="area_ubicacion" id="area_ubicacion" placeholder="Ej: Recepción, Oficina 2"/>
                         </div>
 
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Mantenimiento preventivo</label>
+                            <select class="form-control form-control-sm" name="mantenimiento_preventivo" id="mantenimiento_preventivo">
+                                <option value="ninguno" selected>Ninguno</option>
+                                <option value="mensual">Mensual</option>
+                                <option value="bimensual">Bimensual</option>
+                                <option value="trimestral">Trimestral</option>
+                                <option value="semestral">Semestral</option>
+                                <option value="anual">Anual</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3 contador-campo">
                             <label class="form-label">Contador inicial BN <span class="text-danger">*</span></label>
                             <input class="form-control form-control-sm" type="number" name="contador_inicial_bn" id="contador_inicial_bn" placeholder="0"/>
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Contador final BN <span class="text-danger">*</span></label>
+                        <div class="col-md-6 mb-3 contador-campo">
+                            <label class="form-label">Contador final BN<span class="text-danger">*</span></label>
                             <input class="form-control form-control-sm" type="number" name="contador_final_bn" id="contador_final_bn" placeholder="0"/>
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Contador inicial Color </label>
+                        <div class="col-md-6 mb-3 contador-campo">
+                            <label class="form-label">Contador inicial Color</label>
                             <input class="form-control form-control-sm" type="number" name="contador_inicial_color" id="contador_inicial_color" placeholder="0"/>
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Contador final Color </label>
+                        <div class="col-md-6 mb-3 contador-campo">
+                            <label class="form-label">Contador final Color</label>
                             <input class="form-control form-control-sm" type="number" name="contador_final_color" id="contador_final_color" placeholder="0"/>
                         </div>
                     </div>

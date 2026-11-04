@@ -8,6 +8,9 @@ $(document).ready(function () {
 
 let tabla;
 let verTodos = false;
+let estado_ticket_edicion = null;
+let tipo_equipo_edicion = null;
+let categoria_equipo_edicion = null;
 
 function listarTicket() {
     
@@ -34,17 +37,18 @@ function listarTicket() {
         "responsive": true, 
         
         columnDefs: [
-            { width: "8.1%", targets: 0, className: 'text-center', orderable: true },
-            { width: "8.1%", targets: 1, className: 'text-center', orderable: true },
-            { width: "19%", targets: 2, className: 'text-left', orderable: true },
-            { width: "8.1%", targets: 3, className: 'text-center', orderable: true },
-            { width: "8.1%", targets: 4, className: 'text-center', orderable: true },
-            { width: "8.1%", targets: 5, className: 'text-center', orderable: true },
-            { width: "8.1%", targets: 6, className: 'text-center', orderable: true },
-            { width: "8.1%", targets: 7, className: 'text-center', orderable: true },
-            { width: "8.1%", targets: 8, className: 'text-center', orderable: true },
-            { width: "8.1%", targets: 9, className: 'text-center', orderable: true },
-            { width: "8.1%", targets: 10, className: 'text-center', orderable: false } // Acciones NO ordenables
+            { width: "7.5%", targets: 0, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 1, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 2, className: 'text-center', orderable: true },
+            { width: "17.5%", targets: 3, className: 'text-left', orderable: true },
+            { width: "7.5%", targets: 4, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 5, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 6, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 7, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 8, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 9, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 10, className: 'text-center', orderable: true },
+            { width: "7.5%", targets: 11, className: 'text-center', orderable: false } // Acciones NO ordenables
         ],
         
         "ajax": {
@@ -71,9 +75,6 @@ function listarTicket() {
             switch(estado) {
                 case 'pendiente':
                     borderColor = '#6c757d'; // secondary
-                    break;
-                case 'en_proceso':
-                    borderColor = '#ffc107'; // warning
                     break;
                 case 'resuelto':
                     borderColor = '#198754'; // success
@@ -278,16 +279,41 @@ function verEquipo(contrato_equipo_id) {
                 const data = response.data;
                 
                 // Llenar información del equipo
+                $('#equipo_marca_modelo').text(((data.marca || '') + ' ' + (data.modelo || '')).trim() || '-');
                 $('#equipo_numero_serie').text(data.numero_serie || '-');
                 $('#equipo_ip').text(data.ip_equipo || '-');
                 $('#equipo_area').text(data.area_ubicacion || '-');
                 $('#equipo_direccion').text(data.direccion || '-');
                 
-                // Tipo de equipo con badge
+                // Categoría con badge
+                const categorias = {
+                    impresora: 'IMPRESORA',
+                    monitor: 'MONITOR',
+                    cpu: 'CPU',
+                    laptop: 'LAPTOP',
+                    accesorios: 'ACCESORIOS'
+                };
+                // Mismos colores que en los listados de Equipos y Contratos
+                const coloresCategoria = {
+                    impresora: 'bg-light-primary',
+                    monitor: 'bg-light-info',
+                    cpu: 'bg-light-success',
+                    laptop: 'bg-light-dark',
+                    accesorios: 'bg-light-warning'
+                };
+                $('#equipo_categoria').removeClass().addClass('badge f-12 ' + (coloresCategoria[data.categoria_equipo] || 'bg-light-secondary')).text(categorias[data.categoria_equipo] || '-');
+
+                // Tipo de impresión y contadores: solo aplican a impresoras
+                const esImpresora = (data.categoria_equipo === 'impresora');
+                $('#col_tipo_impresion').toggle(esImpresora);
+                $('#card_contadores_equipo').toggle(esImpresora);
+
                 if (data.tipo_equipo === 'bn') {
                     $('#equipo_tipo').removeClass().addClass('badge bg-secondary').text('BLANCO Y NEGRO');
-                } else {
+                } else if (data.tipo_equipo === 'color') {
                     $('#equipo_tipo').removeClass().addClass('badge bg-info').text('COLOR');
+                } else {
+                    $('#equipo_tipo').removeClass().addClass('badge').text('-');
                 }
                 
                 // Condición con badge
@@ -494,6 +520,10 @@ function modalNuevo() {
     $('#ticket_id').val('');
     $('#modalTicketLabel').text('Nuevo ticket');
 
+    // Los datos de finalización solo se muestran al editar un ticket finalizado
+    estado_ticket_edicion = null;
+    $('#card-finalizacion-ticket').hide();
+
     // Deshabilitar y limpiar contrato
     $('#contrato_id').prop('disabled', true);
     $('#contrato_id').html('<option value="">-- Seleccionar --</option>');
@@ -509,17 +539,73 @@ function modalNuevo() {
     $('#modal_ticket').modal('show');
 }
 
+// Mostrar u ocultar los contadores finales según el equipo del ticket finalizado
+function aplicarContadoresCierre(categoria, tipo) {
+    categoria_equipo_edicion = categoria;
+    tipo_equipo_edicion = tipo;
+
+    let esImpresora = (categoria === 'impresora');
+    $('.contador-cierre').toggle(esImpresora);
+
+    if (!esImpresora) {
+        $('#contador_final_bn, #contador_final_color').val('');
+        return;
+    }
+
+    // El contador color solo aplica a equipos a color
+    let $labelColor = $("label[for='contador_final_color']");
+    $labelColor.find('.text-danger').remove();
+
+    if (tipo === 'color') {
+        $labelColor.append(' <span class="text-danger">*</span>');
+        $('#contador_final_color').prop('disabled', false).removeClass('bg-light');
+    } else if (tipo === 'bn') {
+        $('#contador_final_color').prop('disabled', true).addClass('bg-light').val('');
+    } else {
+        $('#contador_final_color').prop('disabled', false).removeClass('bg-light');
+    }
+}
+
+// Al cambiar el equipo de un ticket finalizado, ajustar los contadores finales
+$('#equipo_id').on('change', function() {
+    if (estado_ticket_edicion !== 'resuelto') {
+        return;
+    }
+
+    let $opcion = $(this).find('option:selected');
+    aplicarContadoresCierre($opcion.data('categoria') || null, $opcion.data('tipo') || null);
+});
+
 function editarTicket(id) {
     $("#ticket_id").val(id);
     $('#modalTicketLabel').html('Editar ticket');
-    
+
+    estado_ticket_edicion = null;
+    $('#card-finalizacion-ticket').hide();
+
     $.post("../../controller/ticket.php?op=obtener", { id: id }, function (data) {
         data = JSON.parse(data);
 
         $('#tipo_ticket').val(data.tipo_incidencia);
         $('#fecha_incidencia').val(data.fecha_incidencia);
         $('#descripcion_problema').val(data.descripcion_problema);
-        
+
+        // Ticket finalizado: mostrar y cargar los datos de cierre
+        estado_ticket_edicion = data.estado;
+        tipo_equipo_edicion = data.tipo_equipo;
+
+        if (data.estado === 'resuelto') {
+            $('#fecha_atencion').val(data.fecha_atencion ? data.fecha_atencion.replace(' ', 'T').slice(0, 16) : '');
+            $('#observaciones').val(data.observaciones);
+            $('#contador_final_bn').val(data.contador_final_bn);
+            $('#contador_final_color').val(data.contador_final_color);
+
+            // Los contadores solo aplican a impresoras (y el color solo a las de color)
+            aplicarContadoresCierre(data.categoria_equipo, data.tipo_equipo);
+
+            $('#card-finalizacion-ticket').show();
+        }
+
         // Guardar tecnico_id original antes de cargar
         const tecnicoOriginal = data.tecnico_id;
         
@@ -658,6 +744,50 @@ function guardarTicket() {
         }
     }
 
+    // Ticket finalizado: validar los datos de finalización
+    if (estado_ticket_edicion === 'resuelto') {
+        let fechaFinalizacion = $("#fecha_atencion").val();
+
+        if (!fechaFinalizacion) {
+            getMessage("warning", "La fecha y hora de finalización es requerida");
+            $("#fecha_atencion").focus();
+            return false;
+        }
+
+        if (new Date(fechaFinalizacion) > new Date()) {
+            getMessage("warning", "La fecha de finalización no puede ser futura");
+            $("#fecha_atencion").focus();
+            return false;
+        }
+
+        if (new Date(fechaFinalizacion) < new Date($("#fecha_incidencia").val().replace(' ', 'T'))) {
+            getMessage("warning", "La fecha de finalización no puede ser anterior a la fecha de inicio del ticket");
+            $("#fecha_atencion").focus();
+            return false;
+        }
+
+        if ($("#observaciones").val().trim() === "") {
+            getMessage("warning", "El campo observaciones es requerido");
+            $("#observaciones").focus();
+            return false;
+        }
+
+        // Los contadores solo se piden para impresoras
+        let requiereContadores = (categoria_equipo_edicion === 'impresora');
+
+        if (requiereContadores && $("#contador_final_bn").val().trim() === "") {
+            getMessage("warning", "El contador final BN es requerido");
+            $("#contador_final_bn").focus();
+            return false;
+        }
+
+        if (requiereContadores && $("#contador_final_color").val().trim() === "" && tipo_equipo_edicion === 'color') {
+            getMessage("warning", "El contador final Color es requerido");
+            $("#contador_final_color").focus();
+            return false;
+        }
+    }
+
     // Enviar por AJAX
     $.ajax({
         url: '../../controller/ticket.php?op=ingresar_editar_ticket',
@@ -695,9 +825,50 @@ function guardarTicket() {
 
 function cerrarModal() {
     $("#form-ticket")[0].reset();
-    
+
     // Limpiar el contrato_id oculto
     $('#ticket_id').val('');
 
+    // Restablecer los datos de finalización
+    estado_ticket_edicion = null;
+    categoria_equipo_edicion = null;
+    $('#card-finalizacion-ticket').hide();
+    $('.contador-cierre').show();
+    $('#contador_final_color').prop('disabled', false).removeClass('bg-light');
+
     $('#modal_ticket').modal('hide');
+}
+
+function eliminarTicket(id) {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: 'Se eliminará el ticket junto con sus comentarios y archivos adjuntos. No podrás revertir esta acción',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '../../controller/ticket.php?op=eliminar_ticket',
+                type: 'POST',
+                data: { ticket_id: id },
+                dataType: 'json',
+                success: function (response) {
+                    if (response && response.success == 1) {
+                        getMessage("success", response.message || "Ticket eliminado correctamente");
+                        tabla.ajax.reload();
+                    } else {
+                        getMessage("error", response.message || "Error al eliminar el ticket");
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', xhr.responseText);
+                    getMessage("error", "Error al procesar la solicitud");
+                }
+            });
+        }
+    });
 }

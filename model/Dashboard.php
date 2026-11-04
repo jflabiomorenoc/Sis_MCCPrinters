@@ -73,11 +73,11 @@ class Dashboard extends Conectar {
                     
                     (SELECT COUNT(*) 
                      FROM mccp_incidencia 
-                     WHERE estado = 'en_proceso' {$filtros['tickets']}) as tickets_en_proceso,
-                    
-                    (SELECT COUNT(*) 
-                     FROM mccp_incidencia 
-                     WHERE estado = 'resuelto' {$filtros['tickets']}) as tickets_resueltos";
+                     WHERE estado = 'resuelto' {$filtros['tickets']}) as tickets_resueltos,
+
+                    (SELECT COUNT(*)
+                     FROM mccp_incidencia
+                     WHERE estado = 'cancelado' {$filtros['tickets']}) as tickets_cancelados";
         
         $stmt = $conectar->prepare($sql);
         

@@ -115,10 +115,10 @@ include "../MainHeader/header.php";
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-8">
-                                <h3 class="mb-1" id="tickets-en-proceso">0</h3>
-                                <p class="text-muted mb-0">Tickets en proceso</p>
+                                <h3 class="mb-1" id="tickets-resueltos">0</h3>
+                                <p class="text-muted mb-0">Tickets resueltos</p>
                             </div>
-                            <div class="col-4 text-end"><i class="ti ti-ticket text-warning f-36"></i></div>
+                            <div class="col-4 text-end"><i class="ti ti-ticket text-success f-36"></i></div>
                         </div>
                     </div>
                 </div>
@@ -128,10 +128,10 @@ include "../MainHeader/header.php";
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-8">
-                                <h3 class="mb-1" id="tickets-resueltos">0</h3>
-                                <p class="text-muted mb-0">Tickets resueltos</p>
+                                <h3 class="mb-1" id="tickets-cancelados">0</h3>
+                                <p class="text-muted mb-0">Tickets cancelados</p>
                             </div>
-                            <div class="col-4 text-end"><i class="ti ti-ticket text-success f-36"></i></div>
+                            <div class="col-4 text-end"><i class="ti ti-ticket text-danger f-36"></i></div>
                         </div>
                     </div>
                 </div>

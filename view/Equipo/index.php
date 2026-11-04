@@ -12,6 +12,119 @@ include "../MainHead/head.php";
 include "../MainNav/nav.php";
 include "../MainHeader/header.php";
 ?>
+        <style>
+            /* Carga de archivos */
+            .file-upload-area {
+                border: 2px dashed #dee2e6;
+                border-radius: 8px;
+                padding: 30px 20px;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.3s;
+                background: #fff;
+            }
+
+            .file-upload-area:hover {
+                border-color: #0d6efd;
+                background: #f8f9ff;
+            }
+
+            .file-upload-area.dragover {
+                border-color: #0d6efd;
+                background: #e7f1ff;
+            }
+
+            .file-upload-area i {
+                font-size: 3rem;
+                color: #6c757d;
+            }
+
+            .preview-container-modal {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 12px;
+                margin-top: 15px;
+            }
+
+            .preview-item-modal {
+                position: relative;
+                width: 100%;
+                height: 140px;
+                border-radius: 10px;
+                overflow: hidden;
+                border: 2px solid #e9ecef;
+                background: #fff;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            }
+
+            .preview-item-modal:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                border-color: #0d6efd;
+            }
+
+            .preview-item-modal img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .preview-item-modal .remove-btn-modal {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                background: rgba(220, 53, 69, 0.95);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 16px;
+                padding: 0;
+                transition: all 0.2s ease;
+                z-index: 10;
+                box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+            }
+
+            .preview-item-modal .remove-btn-modal:hover {
+                background: #dc3545;
+                transform: scale(1.15) rotate(90deg);
+                box-shadow: 0 4px 12px rgba(220, 53, 69, 0.6);
+            }
+
+            .file-preview-doc {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                padding: 10px;
+                width: 100%;
+                height: 100%;
+            }
+
+            .file-preview-doc .file-name {
+                font-size: 11px;
+                color: #444;
+                text-align: center;
+                word-break: break-all;
+                max-width: 100%;
+                overflow: hidden;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+            }
+
+            .file-preview-doc .file-size {
+                font-size: 10px;
+                color: #999;
+            }
+        </style>
         <div class="pc-container">
             <div class="pc-content"><!-- [ breadcrumb ] start -->
                 <div class="page-header">
@@ -54,9 +167,10 @@ include "../MainHeader/header.php";
                                                 <th class="border-top-0 text-center">N° Serie</th>
                                                 <th class="border-top-0 text-center">Marca</th>
                                                 <th class="border-top-0 text-center">Modelo</th>
-                                                <th class="border-top-0 text-center">Tipo</th>
+                                                <th class="border-top-0 text-center">Categoría</th>
                                                 <th class="border-top-0 text-center">Condición</th>
                                                 <th class="border-top-0">Proveedor</th>
+                                                <th class="border-top-0 text-center">Archivos</th>
                                                 <th class="border-top-0 text-center">Estado</th>
                                                 <th class="border-top-0 text-center">Acciones</th>
                                             </tr>
@@ -72,6 +186,7 @@ include "../MainHeader/header.php";
         </div><!-- [ Main Content ] end -->
 
         <?php include "modal_form.php"; ?>
+        <?php include "modal_archivos.php"; ?>
     
     <?php
         include "../MainFooter/footer.php";

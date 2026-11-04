@@ -243,7 +243,11 @@ switch($_GET["op"]){
     case "obtener_perfiles":
         $datos = $usuario->obtener_perfiles($_POST['usuario_id']);
         $data = Array();
-        
+
+        // Obtener permisos del usuario para el módulo usuarios
+        $perfil = new Perfil();
+        $permisos = $perfil->obtenerPermisosModulo($_SESSION['id'], 'Usuarios');
+
         foreach($datos as $row){
             $sub_array = array();
 

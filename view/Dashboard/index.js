@@ -11,7 +11,7 @@ $(document).ready(function(){
         
         $('#total-tickets').html(data.total_tickets);
         $('#tickets-pendientes').html(data.tickets_pendientes);
-        $('#tickets-en-proceso').text(data.tickets_en_proceso);
         $('#tickets-resueltos').html(data.tickets_resueltos);
+        $('#tickets-cancelados').html(data.tickets_cancelados);
     });
 });
